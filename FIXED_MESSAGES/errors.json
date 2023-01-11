@@ -1,0 +1,62 @@
+{
+  "INTERNAL_ERROR" : {
+    "type": "error",
+    "name": "INTERNAL_ERROR",
+    "message": "Something unexpected happened."
+  },
+  "INVALID_FORMAT" : {
+    "type": "error",
+    "name": "INVALID_FORMAT",
+    "message": "The format of the received message is invalid."
+  },
+  "UNKNOWN_OBJECT" : {
+    "type": "error",
+    "name": "UNKNOWN_OBJECT",
+    "message": "The object requested is unknown to that specific node."
+  },
+  "UNFINDABLE_OBJECT" : {
+    "type": "error",
+    "name": "UNFINDABLE_OBJECT",
+    "message": "The object requested could not be found in the node's network."
+  },
+  "INVALID_HANDSHAKE" : {
+    "type": "error",
+    "name": "INVALID_HANDSHAKE",
+    "message": "The peer sent other validly formatted messages before sending a valid hello message."
+  },
+  "INVALID_TX_OUTPOINT" : {
+    "type": "error",
+    "name": "INVALID_TX_OUTPOINT",
+    "message": "The transaction outpoint is invalid."
+  },
+  "INVALID_TX_SIGNATURE" : {
+    "type": "error",
+    "name": "INVALID_TX_SIGNATURE",
+    "message": "The transaction signature is invalid."
+  },
+  "INVALID_TX_CONSERVATION" : {
+    "type": "error",
+    "name": "INVALID_TX_CONSERVATION",
+    "message": "The transaction does not satisfy the weak law of conservation."
+  },
+  "INVALID_BLOCK_COINBASE" : {
+    "type": "error",
+    "name": "INVALID_BLOCK_COINBASE",
+    "message": "The block coinbase transaction is invalid."
+  },
+  "INVALID_BLOCK_TIMESTAMP" : {
+    "type": "error",
+    "name": "INVALID_BLOCK_TIMESTAMP",
+    "message": "The block timestamp is invalid."
+  },
+  "INVALID_BLOCK_POW" : {
+    "type": "error",
+    "name": "INVALID_BLOCK_POW",
+    "message": "The block proof-of-work is invalid."
+  },
+  "INVALID_GENESIS" : {
+    "type": "error",
+    "name": "INVALID_GENESIS",
+    "message": "The block has a previd of null but it isn't genesis."
+  }
+}
