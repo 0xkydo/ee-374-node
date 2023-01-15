@@ -30,21 +30,23 @@ function peerValidity(peer: string): [number, boolean] {
 
   const startTime = Date.now();
 
-  const _socket = Net.createConnection({
+  const socket = Net.createConnection({
     port: PORT,
     host: SERVER
   });
 
-  _socket.on("ready", () => {
+  socket.on("connect", () => {
     const endTime = Date.now();
     latency = endTime - startTime;
 
-    let socket = new CustomSocket(_socket);
-    socket.on('data', (data) => { });
+    socket.on('data', (data) => {
+      
+
+    });
+
     socket.on("end", () => {
       console.log(`Disconnected from ${SERVER}:${PORT}`);
     });
-    isSuccess = socket.handShakeCompleted;
   });
 
 
@@ -56,3 +58,4 @@ function peerValidity(peer: string): [number, boolean] {
   return [latency, isSuccess];
 
 }
+
