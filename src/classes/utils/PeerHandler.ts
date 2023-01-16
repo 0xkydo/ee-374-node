@@ -3,9 +3,7 @@ import Net from 'net';
 import { networkInterfaces } from 'os';
 import peers from '../../peers/peers.json';
 import { CustomSocket } from '../CustomSocket';
-import { setTimeout } from 'timers/promises';
-
-const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+import delay from 'delay';
 
 export function peerHandler(obj: any) {
   let newPeers: string[] = obj.peers;
@@ -15,10 +13,7 @@ export function peerHandler(obj: any) {
     if (oldPeers.includes(newPeer)) {
       continue;
     }
-    var isValidPeer: boolean = peerValidity(newPeer);
-    console.log(isValidPeer);
-
-    if(isValidPeer){
+    if (peerValidity(newPeer)) {
       //write to json
       oldPeers.push(newPeer)
     }
@@ -27,25 +22,32 @@ export function peerHandler(obj: any) {
   let newPeerJSON = peers;
   newPeerJSON.peers = oldPeers;
 
-  fs.writeFileSync('../../peers/peers.json', JSON.stringify(newPeerJSON));
+  fs.writeFileSync('/Users/k/Desktop/repos/ee-374-node/src/peers/peers.json', JSON.stringify(newPeerJSON));
 }
 
 function peerValidity(peer: string): boolean {
   // Declare return variabels
-  var latency: number = 0;
-  var isSuccess: boolean = false;
+  var customSockets: CustomSocket[] = [];
+
 
   const server: string[] = peer.split(":");
 
   const PORT = Number(server[1]);
   const SERVER = server[0];
 
-  const socket = new CustomSocket(Net.createConnection({
+  const socket = Net.createConnection({
     port: PORT,
     host: SERVER
-  }));
+  });
 
-  // await sleep(4000);
+  socket.on('connect', async () => {
 
-  return socket.handShakeCompleted;
+    let customSocket = new CustomSocket(socket);
+
+    customSockets.push(customSocket);
+
+  })
+
+  return true;
+
 }

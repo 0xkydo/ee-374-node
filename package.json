@@ -18,6 +18,7 @@
   },
   "homepage": "https://github.com/0xkydo/ee-374-node#readme",
   "dependencies": {
+    "delay": "^5.0.0",
     "json-canonicalize": "^1.0.4"
   },
   "devDependencies": {
