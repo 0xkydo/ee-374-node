@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "node": "ts-node src/node/Node.ts",
-    "test": "ts-node src/client/client.ts"
+    "test": "ts-node src/test/test.ts"
   },
   "repository": {
     "type": "git",
