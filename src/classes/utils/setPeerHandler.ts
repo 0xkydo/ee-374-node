@@ -5,7 +5,7 @@ import delay from 'delay';
 
 var socketValidity: boolean = false;
 
-export function peerHandler(obj: any) {
+export function setPeerHandler(obj: any) {
 
   // Read current peer and testing peer list.
   let testing = JSON.parse(fs.readFileSync('/Users/k/Desktop/repos/ee-374-node/src/peers/testing.json', 'utf8'));

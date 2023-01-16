@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "node": "ts-node src/node/Node.ts"
   },
   "repository": {
     "type": "git",

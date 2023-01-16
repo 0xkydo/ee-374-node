@@ -1,9 +1,16 @@
 // Import Libraries
 import { MarabuNode } from '../classes/MarabuNode';
+import peers from '../peers/peers.json'
 
 // The port on which the server is listening.
 const PORT = 18018;
 
 let node = new MarabuNode(PORT);
 
-node.connectToNode('45.63.84.226',18018);
+for(var peer of peers.peers){
+  const address = peer.split(":");
+  const IP = address[0];
+  const PORT = Number(address[1]);
+
+  node.connectToNode(IP,PORT);
+}

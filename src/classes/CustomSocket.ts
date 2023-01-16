@@ -44,13 +44,21 @@ export class CustomSocket {
     try {
       let jsonCanon: string = canonicalize(data);
       console.log(`Message sent: ${jsonCanon}`)
-      return this._socket.write(jsonCanon+'\n');
+      return this._socket.write(jsonCanon + '\n');
     } catch (error) {
-      return this._socket.write(canonicalize(errors.INTERNAL_ERROR)+'\n');
+      return this._socket.write(canonicalize(errors.INTERNAL_ERROR) + '\n');
     }
   }
 
   // on modifies the old socket.on function.
+  on(event: 'close', listener: (hadError: boolean) => void): void;
+  on(event: 'connect', listener: () => void): void;
+  on(event: 'drain', listener: () => void): void;
+  on(event: 'end', listener: () => void): void;
+  on(event: 'error', listener: (err: Error) => void): void;
+  on(event: 'lookup', listener: (err: Error, address: string, family: string | number, host: string) => void): void;
+  on(event: 'ready', listener: () => void): void;
+  on(event: 'timeout', listener: () => void): void;
   on(event: string, listener: (...args: any[]) => void) {
     switch (event) {
       case 'data':
@@ -60,7 +68,6 @@ export class CustomSocket {
         this._socket.on(event, listener);
         break;
     }
-
   }
 
   // _dataHandler Handles the first step converting buffer to string
