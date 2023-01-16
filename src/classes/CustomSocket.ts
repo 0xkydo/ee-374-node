@@ -54,6 +54,16 @@ export class CustomSocket {
   }
 
   // on modifies the old socket.on function.
+  on(event: string, listener: (...args: any[]) => void): void;
+  on(event: 'close', listener: (hadError: boolean) => void): void;
+  on(event: 'connect', listener: () => void): void;
+  on(event: 'data', listener: (data: Buffer) => void): void;
+  on(event: 'drain', listener: () => void): void;
+  on(event: 'end', listener: () => void): void;
+  on(event: 'error', listener: (err: Error) => void): void;
+  on(event: 'lookup', listener: (err: Error, address: string, family: string | number, host: string) => void): void;
+  on(event: 'ready', listener: () => void): void;
+  on(event: 'timeout', listener: () => void): void;
   on(event: string, listener: (...args: any[]) => void) {
     switch (event) {
       case 'data':
@@ -69,10 +79,10 @@ export class CustomSocket {
   // data. It then passes the string data to _formatChecker and
   // _formatChecker passes it down.
   private _dataHandler(data: any) {
-    
+
     // If the buffer data gets too long before being formed into a message,
     // connection will be terminated and buffer will be cleared.
-    if(this.buffer.length + data.length > this.MAX_BUFFER_SIZE){
+    if (this.buffer.length + data.length > this.MAX_BUFFER_SIZE) {
       this.buffer = "";
       this._fatalError(errors.INVALID_FORMAT);
     }
