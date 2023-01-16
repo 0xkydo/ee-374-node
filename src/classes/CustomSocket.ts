@@ -63,8 +63,8 @@ export class CustomSocket {
 
   }
 
-  // _dataHandler Handles the first step converting buffer to string 
-  // data. It then passes the string data to _formatChecker and 
+  // _dataHandler Handles the first step converting buffer to string
+  // data. It then passes the string data to _formatChecker and
   // _formatChecker passes it down.
   private _dataHandler(data: any) {
     this.buffer += data;
@@ -78,7 +78,7 @@ export class CustomSocket {
   };
 
   // _formatChecker checks if the message it received is the correct
-  // JSON format, if it is not, it will either end the connection if 
+  // JSON format, if it is not, it will either end the connection if
   // handshake is not completed or send an invalid format message. If
   // it can be parsed to JSON, the object is passed to the _objRouter
   // for next steps.

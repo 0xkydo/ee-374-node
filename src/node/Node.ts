@@ -6,4 +6,4 @@ const PORT = 18018;
 
 let node = new MarabuNode(PORT);
 
-node.connectToNode('144.202.122.8',18018);
+node.connectToNode('45.63.84.226',18018);
