@@ -13,7 +13,7 @@ export function peerHandler(obj: any) {
     if (oldPeers.includes(newPeer)) {
       continue;
     }
-    if (peerValidity(newPeer)) {
+    if (peerValidityTest(newPeer)) {
       //write to json
       oldPeers.push(newPeer)
     }
@@ -25,7 +25,7 @@ export function peerHandler(obj: any) {
   fs.writeFileSync('/Users/k/Desktop/repos/ee-374-node/src/peers/peers.json', JSON.stringify(newPeerJSON));
 }
 
-function peerValidity(peer: string): boolean {
+function peerValidityTest(peer: string): boolean {
   // Declare return variabels
   var customSockets: CustomSocket[] = [];
 
