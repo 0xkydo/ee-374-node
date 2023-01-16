@@ -1,5 +1,5 @@
 import { canonicalize } from 'json-canonicalize';
-import { peerHandler } from './utils/PeerHandler'
+import { setPeerHandler } from './utils/setPeerHandler'
 import * as net from 'net';
 
 // Import other files
@@ -9,7 +9,7 @@ import peers from '../peers/peers.json';
 import getpeers from '../FIXED_MESSAGES/getpeers.json'
 
 // Import interfaces for JSON objects
-import { ErrorJSON, HelloJSON, PeerJSON } from './interface/JsonInterface';
+import { ErrorJSON, HelloJSON } from './interface/JsonInterface';
 
 
 
@@ -51,14 +51,6 @@ export class CustomSocket {
   }
 
   // on modifies the old socket.on function.
-  on(event: 'close', listener: (hadError: boolean) => void): void;
-  on(event: 'connect', listener: () => void): void;
-  on(event: 'drain', listener: () => void): void;
-  on(event: 'end', listener: () => void): void;
-  on(event: 'error', listener: (err: Error) => void): void;
-  on(event: 'lookup', listener: (err: Error, address: string, family: string | number, host: string) => void): void;
-  on(event: 'ready', listener: () => void): void;
-  on(event: 'timeout', listener: () => void): void;
   on(event: string, listener: (...args: any[]) => void) {
     switch (event) {
       case 'data':
@@ -117,7 +109,7 @@ export class CustomSocket {
           this._getpeersHandler(obj);
           break;
         case "peers":
-          peerHandler(obj);
+          setPeerHandler(obj);
           break;
         default:
           break;

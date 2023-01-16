@@ -12,7 +12,7 @@ export class MarabuNode {
       let socket = new CustomSocket(_socket);
       this.connections.push(socket);
       socket.on('data', (data) => { });
-      socket.on("end", () => {
+      socket.on('end', () => {
         this.connections = this.connections.filter((_socket) => _socket !== socket);
         console.log(`Client disconnected: ${socket.remoteAddress}`);
         console.log(`Current total connection: ${this.connections.length}`);
@@ -45,7 +45,6 @@ export class MarabuNode {
       if (socket === sender) return;
       socket.write(data);
     });
-
   }
 
 }
