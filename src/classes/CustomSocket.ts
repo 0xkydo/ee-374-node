@@ -1,15 +1,14 @@
 import { canonicalize } from 'json-canonicalize';
-import { setPeerHandler } from './utils/setPeerHandler'
+import { setPeersHandler } from './utils/setPeersHandler'
+import formatChecker from './utils/formatChecker';
 import * as net from 'net';
 
-// Import other files
+// Import interfaces for JSON objects
+import { ErrorJSON, HelloJSON } from './interface/JsonInterface';
 import hello from "../FIXED_MESSAGES/hello.json";
 import errors from '../FIXED_MESSAGES/errors.json';
 import peers from '../peers/peers.json';
 import getpeers from '../FIXED_MESSAGES/getpeers.json'
-
-// Import interfaces for JSON objects
-import { ErrorJSON, HelloJSON } from './interface/JsonInterface';
 
 
 
@@ -20,6 +19,7 @@ export class CustomSocket {
 
   // Constants
   MAX_BUFFER_SIZE: number = 1 * 1000000;
+  MAX_ERROR_COUNTS: number = 50
 
   // Node variables
   Name: string = '';
@@ -28,6 +28,7 @@ export class CustomSocket {
 
   // Status Variables
   handShakeCompleted: boolean = false;
+  errorCounter: number = 0;
 
   // Message Variables
   buffer: string = "";
@@ -91,7 +92,7 @@ export class CustomSocket {
     this.messages = this.buffer.split("\n");
     if (this.messages.length > 0) {
       for (var message of this.messages.slice(0, -1)) {
-        this._formatChecker(message);
+        this._messageToJSON(message);
       }
       this.buffer = this.messages[this.messages.length - 1];
     }
@@ -100,20 +101,31 @@ export class CustomSocket {
   // _formatChecker checks if the message it received is the correct
   // JSON format, if it is not, it will either end the connection if
   // handshake is not completed or send an invalid format message. If
-  // it can be parsed to JSON, the object is passed to the _objRouter
-  // for next steps.
-  private _formatChecker(message: string) {
+  // it can be parsed to JSON in correct format, the object is passed 
+  // to the _objRouter for next steps.
+  private _messageToJSON(message: string) {
     console.log(`Message received: ` + message);
     try {
+      // Parse string into JSON object.
       this.obj = JSON.parse(message);
-      this._objRouter(this.obj);
+
+      var isCorrectFormat = formatChecker(this.obj)[0];
+      var errorMessage = formatChecker(this.obj)[1];
+      
+      // Check if the format is correct
+      if (isCorrectFormat) {
+        this._objRouter(this.obj);
+      }else if(this.handShakeCompleted){
+        this._nonFatalError(errorMessage);
+      }else{
+        this._fatalError(errors.INVALID_HANDSHAKE);
+      }
     } catch (e) {
       console.log(e);
       if (this.handShakeCompleted) {
-        this.write(errors.INVALID_FORMAT);
+        this._nonFatalError(errors.INVALID_FORMAT);
       } else {
-        this.write(errors.INVALID_FORMAT);
-        this.end();
+        this._fatalError(errors.INVALID_FORMAT);
       }
     }
   }
@@ -130,7 +142,7 @@ export class CustomSocket {
           this._getpeersHandler(obj);
           break;
         case "peers":
-          setPeerHandler(obj);
+          setPeersHandler(obj);
           break;
         default:
           break;
@@ -145,6 +157,7 @@ export class CustomSocket {
 
   }
 
+  // When asked to get peer, it will return the peers.json file.
   private _getpeersHandler(obj: any) {
     this.write(peers);
   }
@@ -167,13 +180,28 @@ export class CustomSocket {
 
   }
 
+  // Handles all non-fatal error messaging. However, if total error surpasses 50, the node will be force disconnected.
+  private _nonFatalError(error: ErrorJSON) {
+    this.write(error);
+    console.log(error.message)
+    this.errorCounter++;
+    if(this.errorCounter>this.MAX_ERROR_COUNTS){
+      console.log(`Too many errors. Socket connection destroyed.`)
+      this._socket.destroy();
+    }
+  }
+
+  
+  // Handles all fatal error messaging. Also instantly terminate connection.
   private _fatalError(error: ErrorJSON) {
     this.write(error);
     console.log(error.message)
-    this.end();
+    this._socket.destroy();
   }
 
+  // End the socket connection.
   end() {
+    console.log("Ending socket connection...")
     this._socket.end();
   }
 

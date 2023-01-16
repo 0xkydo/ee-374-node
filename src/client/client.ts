@@ -40,15 +40,17 @@ client.on('data', function(chunk) {
     let rawString: string = chunk.toString();
     console.log(`Data received from the server: ${rawString}`);
 
-    if(rawString==canonicalize({"type":"getpeers"})){
-        client.write(canonicalize(peers)+'\n')
-        console.log(`get peer request sent to server.`)
-    }
-
     
+    client.write(canonicalize(peers)+'\n')
+    console.log(`sent over peers`)
     
     // Request an end to the connection after the data has been received.
 });
+
+client.on('error', (e: any) => {
+    console.error(e);
+    console.log(`${e.address}:${e.port}`);
+  })
 
 client.on('end', function() {
     console.log('Requested an end to the TCP connection');
