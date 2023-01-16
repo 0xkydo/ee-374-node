@@ -10,7 +10,7 @@ import peers from '../peers/peers_test.json';
 
 // The port number and hostname of the server.
 const port = 18018;
-const host = '54.67.110.108';
+const host = '0.0.0.0';
 
 // Create a new TCP client.
 const client = new Net.Socket();
