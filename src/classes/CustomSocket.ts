@@ -18,6 +18,9 @@ export class CustomSocket {
   // Socket
   private _socket: net.Socket;
 
+  // Constants
+  MAX_BUFFER_SIZE: number = 1 * 1000000;
+
   // Node variables
   Name: string = '';
   ID: number = 0;
@@ -66,6 +69,14 @@ export class CustomSocket {
   // data. It then passes the string data to _formatChecker and
   // _formatChecker passes it down.
   private _dataHandler(data: any) {
+    
+    // If the buffer data gets too long before being formed into a message,
+    // connection will be terminated and buffer will be cleared.
+    if(this.buffer.length + data.length > this.MAX_BUFFER_SIZE){
+      this.buffer = "";
+      this._fatalError(errors.INVALID_FORMAT);
+    }
+
     this.buffer += data;
     this.messages = this.buffer.split("\n");
     if (this.messages.length > 0) {
