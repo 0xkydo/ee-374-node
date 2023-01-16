@@ -20,17 +20,21 @@ const client = new Net.Socket();
 const startTime = Date.now();
 
 // Send a connection request to the server.
-client.connect({ port: port, host: host }, async function() {
-    // If there is no error, the server has accepted the request and created a new 
-    // socket dedicated to us.
-    console.log('TCP connection established with the server.');
-    const endTime = Date.now();
-      // Calculate the latency
-      const latency = endTime - startTime;
-      console.log(`Latency: ${latency}ms`);
+client.connect({ port: port, host: host }, async function () {
+  // If there is no error, the server has accepted the request and created a new 
+  // socket dedicated to us.
+  console.log('TCP connection established with the server.');
 
-    client.write(canonicalize(hello) + '\n');
-    
+  cell.messages
+    .create({ body: "Monitoring Started!", from: "+13854817615", to: "+19094132524" })
+    .then((message: any) => console.log(message.sid));
+
+  const endTime = Date.now();
+  // Calculate the latency
+  const latency = endTime - startTime;
+  console.log(`Latency: ${latency}ms`);
+
+  client.write(canonicalize(hello) + '\n');
 
 });
 
@@ -40,10 +44,9 @@ client.on('data', function (chunk) {
 
 });
 
-client.on('end', function() {
-
+client.on('end', function () {
   cell.messages
-  .create({ body: "Hello from Twilio", from: "+13854817615", to: "+19094132524" })
-  .then((message:any) => console.log(message.sid));
-    console.log('Requested an end to the TCP connection');
+    .create({ body: "NODE DISCONNECTED!", from: "+13854817615", to: "+19094132524" })
+    .then((message: any) => console.log(message.sid));
+  console.log('Requested an end to the TCP connection');
 });
