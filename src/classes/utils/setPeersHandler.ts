@@ -51,40 +51,40 @@ export function setPeersHandler(obj: any) {
 function addPeer(newPeer: string) {
 
   // Re-read the peers.json and testing file to track any changes during looped validity tests.
-  let peers = JSON.parse(fs.readFileSync(peersPath, 'utf8'));
+  let peersJSON = JSON.parse(fs.readFileSync(peersPath, 'utf8'));
 
   // Extract JSON objects's peer list into arrays.
-  let oldPeers: string[] = peers.peers;
+  let oldPeers: string[] = peersJSON.peers;
 
   // If the new peer is a valid new peer, add to oldpeer list.
   oldPeers.push(newPeer);
 
   // Update the peers json file.
-  let newPeerJSON = peers;
-  newPeerJSON.peers = oldPeers;
-  fs.writeFileSync(peersPath, JSON.stringify(newPeerJSON));
+  let newPeersJSON = peersJSON;
+  newPeersJSON.peers = oldPeers;
+  fs.writeFileSync(peersPath, JSON.stringify(newPeersJSON));
 
 }
 
-// TODO serious problem within this portion but seems to be working now.
+// TODO if the peer address is a DNS domain, it cannot be removed from testing.json currently.
 function removeFromTesting(newPeer: string) {
 
-  console.log(`remove Called`)
 
   // Re-read the peers.json and testing file to track any changes during looped validity tests.
-  let testing = JSON.parse(fs.readFileSync(testingPath, 'utf8'));
+  let testingJSON = JSON.parse(fs.readFileSync(testingPath, 'utf8'));
 
   // Extract JSON objects's peer list into arrays.
-  let testingPeers: string[] = testing.peers;
-  console.log(`pre filter`+testingPeers)
+  let testingPeers: string[] = testingJSON.peers;
 
   // Remove the current peer from the testing list.
-  testingPeers = testingPeers.filter((peer) => { peer !== newPeer });
+  testingPeers = testingPeers.filter(peer =>  peer !== newPeer );
 
-  console.log(`post filter: ${testingPeers}`);
   // Update the testing peer file.
-  let newTestingJSON = testing;
+  let newTestingJSON = testingJSON;
   newTestingJSON.peers = testingPeers;
+
+  console.log(JSON.stringify(newTestingJSON));
+
   fs.writeFileSync(testingPath, JSON.stringify(newTestingJSON));
 
 }
@@ -128,7 +128,6 @@ async function peerValidityTest(peer: string) {
   socket.on('error', (e: any) => {
     console.error(e);
     removeFromTesting(`${e.address}:${e.port}`);
-    console.log(`${e.address}:${e.port}`)
 
   })
 
