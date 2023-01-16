@@ -5,7 +5,8 @@
   "main": "index.js",
   "scripts": {
     "node": "ts-node src/node/Node.ts",
-    "test": "ts-node src/test/test.ts"
+    "test": "ts-node src/test/test.ts",
+    "monitor": "ts-node src/monitor/monitor.ts"
   },
   "repository": {
     "type": "git",
@@ -21,7 +22,8 @@
   "dependencies": {
     "delay": "^5.0.0",
     "is-valid-domain": "^0.1.6",
-    "json-canonicalize": "^1.0.4"
+    "json-canonicalize": "^1.0.4",
+    "twilio": "^2.5.2"
   },
   "devDependencies": {
     "@types/node": "^18.11.18",
