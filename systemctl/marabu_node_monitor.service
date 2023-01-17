@@ -1,0 +1,13 @@
+[Unit]
+Description=Start Marabu Node with Systemctl
+After=network.target
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory = /home/ubuntu/ee-374-node/
+ExecStart= npm run monitor
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target

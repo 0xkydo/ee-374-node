@@ -6,7 +6,9 @@
   "scripts": {
     "node": "ts-node src/node/Node.ts",
     "test": "ts-node src/test/test.ts",
-    "monitor": "ts-node src/monitor/monitor.ts"
+    "monitor": "ts-node src/monitor/monitor.ts",
+    "monitor-test": "ts-node src/monitor/monitor_test.ts"
+
   },
   "repository": {
     "type": "git",

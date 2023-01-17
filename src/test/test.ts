@@ -7,10 +7,13 @@ import errors from '../FIXED_MESSAGES/errors.json';
 import hello from "../FIXED_MESSAGES/hello_test.json";
 import peers from '../peers/peers_test.json';
 
+const nodeAddy = '54.67.110.108';
+const monitorAddy = '52.53.175.221';
+const local = '0.0.0.0'
 
 // The port number and hostname of the server.
 const port = 18018;
-const host = '0.0.0.0';
+const host = nodeAddy;
 
 // Create a new TCP client.
 const client = new Net.Socket();
