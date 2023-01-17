@@ -5,7 +5,7 @@ import delay from 'delay';
 
 import { CustomSocket } from '../CustomSocket';
 import isValidDomain from 'is-valid-domain';
-import {lookup} from 'dns';
+import { lookup } from 'dns';
 
 var socketValidity: boolean = false;
 var socketAddress: string = "";
@@ -78,10 +78,10 @@ function removeFromTesting(newPeer: string) {
   let testingPeers: string[] = testingJSON.peers;
 
   // Remove the current peer from the testing list.
-  testingPeers = testingPeers.filter((peer) =>  {
+  testingPeers = testingPeers.filter((peer) => {
 
     // Fist check if the peer is the newPeer we want to remove. If it is the same, return false.
-    if(peer !== newPeer){
+    if (peer !== newPeer) {
       // Decompose the newPeer and peer into [IP,PORT] format.
       let newNode = newPeer.split(":");
       let node = peer.split(":");
@@ -92,24 +92,24 @@ function removeFromTesting(newPeer: string) {
       }
 
       // Chek if the peer stored in testing.json is a domain name.
-      if(isValidDomain(node[0])){
+      if (isValidDomain(node[0])) {
         // If it is a domain name, look up its IPv4 address
-        lookup(node[0],options,(e,address,family)=>{
+        lookup(node[0], options, (e, address, family) => {
           // Check IPv4 address, if it is the same as the one we are trying to remove,
           // return false. If it is not the same, return true and do not remove.
           console.log(`${peer} IPv${family} address is: ${address}`)
-          if(address == newNode[0]){
+          if (address == newNode[0]) {
             return false;
-          }else{
+          } else {
             return true;
           }
         })
-      }else{
+      } else {
         // Return true if it is not a domain name and the IP does not match.
         return true;
       }
-      
-    }else{
+
+    } else {
       // Return false if the peer string matches the newPeer we are trying to remove.
       return false;
     }

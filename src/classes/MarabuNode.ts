@@ -15,6 +15,7 @@ export class MarabuNode {
       this.connections.push(socket);
       console.log(`Current total connection: ${this.connections.length}`);
       socket.on('data', (data) => { });
+      socket.on('timeout', () => { });
       socket.on('close', () => {
         this.connections = this.connections.filter((_socket) => _socket !== socket);
         console.log(`Client disconnected: ${socket.remoteAddress}`);
@@ -45,6 +46,7 @@ export class MarabuNode {
       this.connections.push(socket);
       console.log(`Current total connection: ${this.connections.length}`);
       socket.on('data', (data) => { });
+      socket.on('timeout', () => { });
       socket.on("close", () => {
         console.log(`Disconnected from ${ip}:${port}`);
         this.connections = this.connections.filter((_socket) => _socket !== socket);

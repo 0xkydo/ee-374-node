@@ -9,6 +9,7 @@ import hello from "../FIXED_MESSAGES/hello.json";
 import errors from '../FIXED_MESSAGES/errors.json';
 import peers from '../peers/peers.json';
 import getpeers from '../FIXED_MESSAGES/getpeers.json'
+import { DESTRUCTION } from 'dns';
 
 
 
@@ -34,22 +35,35 @@ export class CustomSocket {
   buffer: string = "";
   messages: string[] = [];
   obj: any = null;
+  startTimer = Date.now();
 
 
   constructor(socket: net.Socket) {
+    // Store socket
     this._socket = socket;
+    // Set socket timeout time to 10 seconds
+    this._socket.setTimeout(10000);
+    // Store remoteAddress in peer format.
     this.remoteAddress = `${socket.remoteAddress}:${socket.remotePort}`;
+
     console.log(`Socket connection established with ${this.remoteAddress}, ${socket.readyState}`);
+
+    // Start handshake process.
     this.write(hello);
   }
 
+  // @param data: JSON object.
+  // @about: tries to canonicalize the JSON object, if it fails,
+  // it will write an internal error message.
   write(data: object): boolean {
 
     try {
       let jsonCanon: string = canonicalize(data);
-      console.log(`Message sent: ${jsonCanon}`)
+      console.log(`Message sent to ${this.remoteAddress} | Message: ${jsonCanon}`)
       return this._socket.write(jsonCanon + '\n');
     } catch (error) {
+      console.log(`ERROR: Message cannot be canonicalized and sent over | Remote address: ${this.remoteAddress}`);
+      console.error(error);
       return this._socket.write(canonicalize(errors.INTERNAL_ERROR) + '\n');
     }
   }
@@ -70,10 +84,21 @@ export class CustomSocket {
       case 'data':
         this._socket.on('data', (data) => { this._dataHandler(data) })
         break;
+      case 'timeout':
+        this._socket.on('timeout',()=>{ this._timeoutHandler()});
       default:
         this._socket.on(event, listener);
         break;
     }
+  }
+
+  // After 10 seconds of idle, if there's still things in the buffer, terminate connection.
+  private  _timeoutHandler() {
+
+    if(this.buffer.length>0){
+      this._fatalError(errors.INVALID_FORMAT);
+    }
+    
   }
 
   // _dataHandler Handles the first step converting buffer to string
@@ -89,6 +114,7 @@ export class CustomSocket {
     }
 
     this.buffer += data;
+
     this.messages = this.buffer.split("\n");
     if (this.messages.length > 0) {
       for (var message of this.messages.slice(0, -1)) {
@@ -96,6 +122,8 @@ export class CustomSocket {
       }
       this.buffer = this.messages[this.messages.length - 1];
     }
+   
+
   };
 
   // _formatChecker checks if the message it received is the correct
