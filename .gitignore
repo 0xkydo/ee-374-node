@@ -130,4 +130,4 @@ dist
 .pnp.*
 
 *.pem
-*.DS_Stores
+.DS_Stores
