@@ -10,6 +10,7 @@ import delay from "delay";
 const nodeAddy = '54.67.110.108';
 const monitorAddy = '52.53.175.221';
 const local = '0.0.0.0'
+const test = 'example.com';
 
 // The port number and hostname of the server.
 const port = 18018;
@@ -24,20 +25,15 @@ client.connect({ port: port, host: host }, async function () {
   // If there is no error, the server has accepted the request and created a new 
   // socket dedicated to us.
   console.log('TCP connection established with the server.');
+
   const endTime = Date.now();
   // Calculate the latency
   const latency = endTime - startTime;
   console.log(`Latency: ${latency}ms`);
+  client.write(canonicalize(hello))
 
+  client.write('\n' + canonicalize({ "type": "getpeers" }) + '\n');
 
-  let message: string[] = canonicalize(hello).split(":");
-
-  for(var msg of message){
-    setTimeout(() => {
-      client.write(msg+':')
-
-    }, 1000);
-  }
   // The client can now send data to the server by writing to its socket.
   console.log(`message sent.`)
   // client.write('\n');
@@ -45,6 +41,7 @@ client.connect({ port: port, host: host }, async function () {
 
 
 });
+
 
 // The client can also receive data from the server by reading from its socket.
 client.on('data', function (chunk) {

@@ -9,7 +9,6 @@ import hello from "../FIXED_MESSAGES/hello.json";
 import errors from '../FIXED_MESSAGES/errors.json';
 import peers from '../peers/peers.json';
 import getpeers from '../FIXED_MESSAGES/getpeers.json'
-import { DESTRUCTION } from 'dns';
 
 
 
@@ -35,7 +34,8 @@ export class CustomSocket {
   buffer: string = "";
   messages: string[] = [];
   obj: any = null;
-  startTimer = Date.now();
+  bufferTimer: any;
+  isBufferTimerStarted: boolean = false;
 
 
   constructor(socket: net.Socket) {
@@ -85,7 +85,7 @@ export class CustomSocket {
         this._socket.on('data', (data) => { this._dataHandler(data) })
         break;
       case 'timeout':
-        this._socket.on('timeout',()=>{ this._timeoutHandler()});
+        this._socket.on('timeout', () => { this._timeoutHandler() });
       default:
         this._socket.on(event, listener);
         break;
@@ -93,12 +93,12 @@ export class CustomSocket {
   }
 
   // After 10 seconds of idle, if there's still things in the buffer, terminate connection.
-  private  _timeoutHandler() {
+  private _timeoutHandler() {
 
-    if(this.buffer.length>0){
+    if (this.buffer.length > 0) {
       this._fatalError(errors.INVALID_FORMAT);
     }
-    
+
   }
 
   // _dataHandler Handles the first step converting buffer to string
@@ -113,16 +113,33 @@ export class CustomSocket {
       this._fatalError(errors.INVALID_FORMAT);
     }
 
-    this.buffer += data;
+    // If there's no buffer and the bufferTimer is not started,
+    // start the timer.
+    if (this.buffer.length == 0 && !this.isBufferTimerStarted) {
+      this.bufferTimer = setTimeout(() => {
+        console.log(`Too long before buffer is completed`);
+        this._fatalError(errors.INVALID_FORMAT);
+      }, 10000);
+    }
 
+    // Add new data into buffer
+    this.buffer += data;
+    // Split messages into elements based on newline char.
     this.messages = this.buffer.split("\n");
-    if (this.messages.length > 0) {
+    // Loop through messages and process each one.
+    if (this.messages.length > 1) {
+      // Cancel buffer timeout.
+      clearTimeout(this.bufferTimer);
+
+      // Check all message instead of the last one.
       for (var message of this.messages.slice(0, -1)) {
+        // Pass message to processing
         this._messageToJSON(message);
       }
+      // Set current buffer into the last messages element.
       this.buffer = this.messages[this.messages.length - 1];
     }
-   
+
 
   };
 
@@ -139,13 +156,13 @@ export class CustomSocket {
 
       var isCorrectFormat = formatChecker(this.obj)[0];
       var errorMessage = formatChecker(this.obj)[1];
-      
+
       // Check if the format is correct
       if (isCorrectFormat) {
         this._objRouter(this.obj);
-      }else if(this.handShakeCompleted){
+      } else if (this.handShakeCompleted) {
         this._nonFatalError(errorMessage);
-      }else{
+      } else {
         this._fatalError(errors.INVALID_HANDSHAKE);
       }
     } catch (e) {
@@ -200,7 +217,7 @@ export class CustomSocket {
       this.Name = obj.agent;
       this.ID = 0 // TODO for random ID.
       this.handShakeCompleted = true;
-      console.log("Handshake Completed Successfully.")
+      console.log(`Handshake Completed with ${this.remoteAddress}.`)
       this.write(getpeers);
     } else {
       this._fatalError(errors.INVALID_FORMAT);
@@ -210,20 +227,21 @@ export class CustomSocket {
 
   // Handles all non-fatal error messaging. However, if total error surpasses 50, the node will be force disconnected.
   private _nonFatalError(error: ErrorJSON) {
+    console.log(`NON-FATAL ERROR`)
     this.write(error);
     console.log(error.message)
     this.errorCounter++;
-    if(this.errorCounter>this.MAX_ERROR_COUNTS){
-      console.log(`Too many errors. Socket connection destroyed.`)
+    if (this.errorCounter > this.MAX_ERROR_COUNTS) {
+      console.log(`Too many non-fatal errors. Socket connection destroyed with ${this.remoteAddress}.`)
       this._socket.destroy();
     }
   }
 
-  
+
   // Handles all fatal error messaging. Also instantly terminate connection.
   private _fatalError(error: ErrorJSON) {
+    console.log(`FATAL ERROR: Socket connection destroyed with ${this.remoteAddress}`)
     this.write(error);
-    console.log(error.message)
     this._socket.destroy();
   }
 
