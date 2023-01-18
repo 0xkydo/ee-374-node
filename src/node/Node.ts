@@ -1,9 +1,15 @@
 // Import Libraries
+import path from 'path';
+import fs from 'fs';
 import { MarabuNode } from '../classes/MarabuNode';
 import peers from '../peers/peers.json'
 
 // The port on which the server is listening.
 const PORT = 18018;
+
+// Clear Testing Peers List
+var testingPath = path.resolve(__dirname, '../peers/testing.json');
+fs.writeFileSync(testingPath, `{"peers":[]}`);
 
 let node = new MarabuNode(PORT);
 

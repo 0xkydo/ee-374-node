@@ -10,11 +10,11 @@ import delay from "delay";
 const nodeAddy = '54.67.110.108';
 const monitorAddy = '52.53.175.221';
 const local = '0.0.0.0'
-const test = 'example.com';
+const test = '45.63.89.228';
 
 // The port number and hostname of the server.
 const port = 18018;
-const host = local;
+const host = test;
 
 // Create a new TCP client.
 const client = new Net.Socket();

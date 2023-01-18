@@ -13,17 +13,17 @@ export class MarabuNode {
     this._server = Net.createServer((_socket) => {
       let socket = new CustomSocket(_socket);
       this.connections.push(socket);
-      console.log(`Current total connection: ${this.connections.length}`);
+      console.log(`NODE | TOTAL CONNECTION | ${this.connections.length}`);
       socket.on('data', (data) => { });
       socket.on('timeout', () => { });
       socket.on('close', () => {
+        console.log(`NODE | REMOVED SOCKET | ${socket.remoteAddress}`);
         this.connections = this.connections.filter((_socket) => _socket !== socket);
-        console.log(`Client disconnected: ${socket.remoteAddress}`);
-        console.log(`Current total connection: ${this.connections.length}`);
+        console.log(`NODE | TOTAL CONNECTION | ${this.connections.length}`);
       });
     })
     this._server.listen(PORT, '0.0.0.0', () => {
-      console.log(`Server listening for connection requests on socket at ${PORT}`);
+      console.log(`NODE | START | Listening at port: ${PORT}`);
     });
 
   }
@@ -44,11 +44,11 @@ export class MarabuNode {
     _socket.on("connect", () => {
       let socket = new CustomSocket(_socket);
       this.connections.push(socket);
-      console.log(`Current total connection: ${this.connections.length}`);
+      console.log(`NODE | TOTAL CONNECTION | ${this.connections.length}`);
       socket.on('data', (data) => { });
       socket.on('timeout', () => { });
       socket.on("close", () => {
-        console.log(`Disconnected from ${ip}:${port}`);
+        console.log(`NODE | REMOVED SOCKET | ${socket.remoteAddress}`);
         this.connections = this.connections.filter((_socket) => _socket !== socket);
       });
     });

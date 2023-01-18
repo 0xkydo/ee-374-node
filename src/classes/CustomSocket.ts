@@ -46,10 +46,12 @@ export class CustomSocket {
     // Store remoteAddress in peer format.
     this.remoteAddress = `${socket.remoteAddress}:${socket.remotePort}`;
 
-    console.log(`Socket connection established with ${this.remoteAddress}, ${socket.readyState}`);
+    console.log(`CONN | ${this.remoteAddress} | CustomSocket class wrapped`);
 
     // Start handshake process.
     this.write(hello);
+    // Immediately send getpeers request.
+    this.write(getpeers);
   }
 
   // @param data: JSON object.
@@ -58,13 +60,23 @@ export class CustomSocket {
   write(data: object): boolean {
 
     try {
+      // Canonicalize data object
       let jsonCanon: string = canonicalize(data);
-      console.log(`Message sent to ${this.remoteAddress} | Message: ${jsonCanon}`)
-      return this._socket.write(jsonCanon + '\n');
+      // If socket is destroyed, do not write.
+      if (this._socket.destroyed) {
+        return false;
+      } else {
+        console.log(`SENT | ${this.remoteAddress} | ${jsonCanon} `)
+        return this._socket.write(jsonCanon + '\n');
+      }
     } catch (error) {
-      console.log(`ERROR: Message cannot be canonicalized and sent over | Remote address: ${this.remoteAddress}`);
       console.error(error);
-      return this._socket.write(canonicalize(errors.INTERNAL_ERROR) + '\n');
+      if (this._socket.destroyed) {
+        return false;
+      } else {
+        console.log(`NERR | ${this.remoteAddress} | ${canonicalize(errors.INTERNAL_ERROR)}`);
+        return this._socket.write(canonicalize(errors.INTERNAL_ERROR) + '\n');
+      }
     }
   }
 
@@ -117,7 +129,7 @@ export class CustomSocket {
     // start the timer.
     if (this.buffer.length == 0 && !this.isBufferTimerStarted) {
       this.bufferTimer = setTimeout(() => {
-        console.log(`Too long before buffer is completed`);
+        console.log(`FERR | ${this.remoteAddress} | Buffer not completed in time.`);
         this._fatalError(errors.INVALID_FORMAT);
       }, 10000);
     }
@@ -149,7 +161,7 @@ export class CustomSocket {
   // it can be parsed to JSON in correct format, the object is passed 
   // to the _objRouter for next steps.
   private _messageToJSON(message: string) {
-    console.log(`Message received: ` + message);
+    console.log(`RECE | ${this.remoteAddress} | ${message}`);
     try {
       // Parse string into JSON object.
       this.obj = JSON.parse(message);
@@ -160,18 +172,11 @@ export class CustomSocket {
       // Check if the format is correct
       if (isCorrectFormat) {
         this._objRouter(this.obj);
-      } else if (this.handShakeCompleted) {
-        this._nonFatalError(errorMessage);
       } else {
-        this._fatalError(errors.INVALID_HANDSHAKE);
+        this._fatalError(errorMessage);
       }
     } catch (e) {
-      console.log(e);
-      if (this.handShakeCompleted) {
-        this._nonFatalError(errors.INVALID_FORMAT);
-      } else {
-        this._fatalError(errors.INVALID_FORMAT);
-      }
+      this._fatalError(errors.INVALID_FORMAT);
     }
   }
 
@@ -193,7 +198,7 @@ export class CustomSocket {
           break;
       }
     } else {
-      if (obj.type === "hello") {
+      if (obj.type === 'hello') {
         this._handshakeHandler(obj);
       } else {
         this._fatalError(errors.INVALID_HANDSHAKE);
@@ -213,42 +218,38 @@ export class CustomSocket {
   // If the version is wrong, it will terminate connection and send
   // error message.
   private _handshakeHandler(obj: HelloJSON) {
-    if (obj.version.slice(0, -1) === "0.9.") {
-      this.Name = obj.agent;
-      this.ID = 0 // TODO for random ID.
-      this.handShakeCompleted = true;
-      console.log(`Handshake Completed with ${this.remoteAddress}.`)
-      this.write(getpeers);
-    } else {
-      this._fatalError(errors.INVALID_FORMAT);
-    }
-
+    this.Name = obj.agent;
+    this.ID = 0 // TODO for random ID.
+    this.handShakeCompleted = true;
+    console.log(`STAT | ${this.remoteAddress} | Handshake completed.`);
   }
 
   // Handles all non-fatal error messaging. However, if total error surpasses 50, the node will be force disconnected.
   private _nonFatalError(error: ErrorJSON) {
-    console.log(`NON-FATAL ERROR`)
     this.write(error);
+    console.log(`NERR | ${this.remoteAddress} | ${error.type}`)
     console.log(error.message)
     this.errorCounter++;
     if (this.errorCounter > this.MAX_ERROR_COUNTS) {
-      console.log(`Too many non-fatal errors. Socket connection destroyed with ${this.remoteAddress}.`)
       this._socket.destroy();
+      console.log(`FERR | ${this.remoteAddress} | Too many non-fatal errors`)
+      console.log(` END | ${this.remoteAddress} | Connected Ended`)
     }
   }
 
 
   // Handles all fatal error messaging. Also instantly terminate connection.
   private _fatalError(error: ErrorJSON) {
-    console.log(`FATAL ERROR: Socket connection destroyed with ${this.remoteAddress}`)
     this.write(error);
+    console.log(`FERR | ${this.remoteAddress} | ${error.type}`)
     this._socket.destroy();
+    console.log(` END | ${this.remoteAddress} | Connected Ended`)
   }
 
   // End the socket connection.
   end() {
-    console.log("Ending socket connection...")
     this._socket.end();
+    console.log(` END | ${this.remoteAddress} | Connected Ended`)
   }
 
 

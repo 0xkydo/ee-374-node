@@ -7,9 +7,6 @@ import { CustomSocket } from '../CustomSocket';
 import isValidDomain from 'is-valid-domain';
 import { lookup } from 'dns';
 
-var socketValidity: boolean = false;
-var socketAddress: string = "";
-
 var testingPath = path.resolve(__dirname, '../../peers/testing.json');
 var peersPath = path.resolve(__dirname, '../../peers/peers.json');
 
@@ -29,19 +26,18 @@ export function setPeersHandler(obj: any) {
 
     // If the new peer is already in file or currenting being tested, skip.
     if (oldPeers.includes(newPeer) || testingPeers.includes(newPeer)) {
-      console.log(`Peer already in list: ${newPeer}`)
       continue;
     }
 
     // If detect a new peer that's not in testing or stored in peers.json, first add the peer to testing file.
-    console.log(`New peer detected: ${newPeer}`)
+    console.log(`STAT | ${newPeer} | New peer detected.`)
     testingPeers.push(newPeer);
     let newTestingJSON = testing;
     newTestingJSON.peers = testingPeers;
     fs.writeFileSync(testingPath, JSON.stringify(newTestingJSON));
 
     peerValidityTest(newPeer).then(() => {
-      console.log(`Peer Validity Test Finished.`)
+      console.log(`STAT | ${newPeer} | Peer validity test completed`)
     });
 
   }
@@ -64,6 +60,8 @@ function addPeer(newPeer: string) {
   let newPeersJSON = peersJSON;
   newPeersJSON.peers = oldPeers;
   fs.writeFileSync(peersPath, JSON.stringify(newPeersJSON));
+
+  console.log(`STAT | ${newPeer} | Added to peers.json`)
 
 }
 
@@ -97,7 +95,7 @@ function removeFromTesting(newPeer: string) {
         lookup(node[0], options, (e, address, family) => {
           // Check IPv4 address, if it is the same as the one we are trying to remove,
           // return false. If it is not the same, return true and do not remove.
-          console.log(`${peer} IPv${family} address is: ${address}`)
+          // console.log(`${peer} IPv${family} address is: ${address}`)
           if (address == newNode[0]) {
             return false;
           } else {
@@ -113,6 +111,8 @@ function removeFromTesting(newPeer: string) {
       // Return false if the peer string matches the newPeer we are trying to remove.
       return false;
     }
+
+    console.log(`STAT | ${newPeer} | Removed from testing.json`)
 
   });
 
@@ -131,7 +131,7 @@ async function peerValidityTest(peer: string) {
   const PORT = Number(node[1]);
   const NODE = node[0];
 
-  console.log(`Attempting to connect to ${NODE}:${PORT}`)
+  console.log(`STAT | ${peer} | Peer validity test started.`)
 
   let socket = Net.createConnection({
     port: PORT,
@@ -150,13 +150,8 @@ async function peerValidityTest(peer: string) {
     // Else do nothing. At the end, remove file from testing.
     if (customSocket.handShakeCompleted) {
       addPeer(String(customSocket.remoteAddress));
-      console.log(`Peer Validity Test Passed: ${customSocket.remoteAddress}`)
-    } else {
-      console.log(`Peer Validity Test Failed: ${customSocket.remoteAddress}`)
     }
     removeFromTesting(String(customSocket.remoteAddress));
-    console.log(`Testing peer address removed: ${customSocket.remoteAddress}`)
-
     socket.end();
   })
 

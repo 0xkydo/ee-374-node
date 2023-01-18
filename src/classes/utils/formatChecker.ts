@@ -11,7 +11,11 @@ export default function formatChecker(obj: any): [boolean, any] {
     case 'block':
       break;
     case 'hello':
-      break;
+      if (obj.version.slice(0, -1) === "0.9.") {
+        return [true, null];
+      } else {
+        return [false,errors.INVALID_FORMAT];
+      }
     case 'error':
       break;
     case 'getpeers':
