@@ -36,9 +36,7 @@ export function setPeersHandler(obj: any) {
     newTestingJSON.peers = testingPeers;
     fs.writeFileSync(testingPath, JSON.stringify(newTestingJSON));
 
-    peerValidityTest(newPeer).then(() => {
-      console.log(`STAT | ${newPeer} | Peer validity test completed`)
-    });
+    peerValidityTest(newPeer);
 
   }
 
@@ -112,19 +110,19 @@ function removeFromTesting(newPeer: string) {
       return false;
     }
 
-    console.log(`STAT | ${newPeer} | Removed from testing.json`)
-
   });
 
   // Update the testing peer file.
   let newTestingJSON = testingJSON;
   newTestingJSON.peers = testingPeers;
 
+  console.log(`STAT | ${newPeer} | Removed from testing.json`)
+
   fs.writeFileSync(testingPath, JSON.stringify(newTestingJSON));
 
 }
 
-async function peerValidityTest(peer: string) {
+function peerValidityTest(peer: string) {
 
   const node: string[] = peer.split(":");
 
