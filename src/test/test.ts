@@ -10,7 +10,7 @@ import delay from "delay";
 const nodeAddy = '54.67.110.108';
 const monitorAddy = '52.53.175.221';
 const local = '0.0.0.0'
-const test = '45.63.89.228';
+const test = '140.82.50.252';
 const ryanAddy = '135.181.112.99';
 
 // The port number and hostname of the server.
@@ -20,6 +20,8 @@ const host = ryanAddy;
 // Create a new TCP client.
 const client = new Net.Socket();
 const startTime = Date.now();
+
+
 
 // Send a connection request to the server.
 client.connect({ port: port, host: host }, async function () {

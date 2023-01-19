@@ -2,12 +2,13 @@ import { canonicalize } from 'json-canonicalize';
 import { setPeersHandler } from './utils/setPeersHandler'
 import formatChecker from './utils/formatChecker';
 import * as net from 'net';
+import path from 'path';
+import fs from 'fs';
 
 // Import interfaces for JSON objects
 import { ErrorJSON, HelloJSON } from './interface/JsonInterface';
 import hello from "../FIXED_MESSAGES/hello.json";
 import errors from '../FIXED_MESSAGES/errors.json';
-import peers from '../peers/peers.json';
 import getpeers from '../FIXED_MESSAGES/getpeers.json'
 
 
@@ -209,6 +210,9 @@ export class CustomSocket {
 
   // When asked to get peer, it will return the peers.json file.
   private _getpeersHandler(obj: any) {
+    var peersPath = path.resolve(__dirname, '../peers/peers.json');
+    let peers = JSON.parse(fs.readFileSync(peersPath, 'utf8'));
+
     this.write(peers);
   }
 
