@@ -11,10 +11,11 @@ const nodeAddy = '54.67.110.108';
 const monitorAddy = '52.53.175.221';
 const local = '0.0.0.0'
 const test = '45.63.89.228';
+const ryanAddy = '135.181.112.99';
 
 // The port number and hostname of the server.
 const port = 18018;
-const host = test;
+const host = ryanAddy;
 
 // Create a new TCP client.
 const client = new Net.Socket();
@@ -26,13 +27,28 @@ client.connect({ port: port, host: host }, async function () {
   // socket dedicated to us.
   console.log('TCP connection established with the server.');
 
-  const endTime = Date.now();
-  // Calculate the latency
-  const latency = endTime - startTime;
-  console.log(`Latency: ${latency}ms`);
-  client.write(canonicalize(hello))
+  // client.write(`{ "type": "dsdafsdfsf" }\n`)
+  client.write(canonicalize(hello)+`\n`)
+  client.write(`{ "type": "getpeers"}\n`);
+  // console.log(`{ "type": "getpeers"`);
+  // client.write(`}\n`)
 
-  client.write('\n' + canonicalize({ "type": "getpeers" }) + '\n');
+
+  // await delay(1000);
+
+
+  // client.write(`}\n`)
+  // console.log(`}\n`);
+
+
+  // await delay(1000);
+
+  // client.write(canonicalize(peers) + `\n` );
+
+
+  // client.write(canonicalize(peers)+`\n`);
+
+
 
   // The client can now send data to the server by writing to its socket.
   console.log(`message sent.`)
