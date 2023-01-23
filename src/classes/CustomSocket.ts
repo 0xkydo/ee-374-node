@@ -3,6 +3,7 @@ import { setPeersHandler } from './utils/setPeersHandler'
 import formatChecker from './utils/formatChecker';
 import * as net from 'net';
 import level from 'level-ts';
+import blake2 from 'blake2';
 
 // Import interfaces for JSON objects
 import { ErrorJSON, HelloJSON } from './interface/JsonInterface';
@@ -10,9 +11,6 @@ import hello from "../FIXED_MESSAGES/hello.json";
 import errors from '../FIXED_MESSAGES/errors.json';
 import peers from '../peers/peers.json';
 import getpeers from '../FIXED_MESSAGES/getpeers.json'
-import ihaveobject from '../FIXED_MESSAGES/ihaveobject.json'
-import getobject from '../FIXED_MESSAGES/getobject.json'
-import object from '../FIXED_MESSAGES/object.json'
 
 import DATABASE_PATH from '../constants.ts'
 
@@ -228,33 +226,46 @@ export class CustomSocket {
     this.write(peers);
   }
 
-  // Request Object
-  private _requestObject(obj: any) {
-    db.get(canonicalize(obj), (error, data) => {
+  // Send Object
+  private _sendObject(obj: any) {
+    db.get(obj.data, (error, data) => {
       if(error) return;
-      this.write(data)
+      this.write({"type": "object", "data": data});
     });
   }
 
-  // Get Object
-  private _getObject(obj: any) {
-    db.get(canonicalize(obj), (error, data) => {
-      if(error) this.write(getobject);
+  // Request Object
+  private _requestObject(obj: any) {
+    db.get(obj.data, (error, data) => {
+      if(error) this.write({"type": "getobject", "data": obj.data});
     });
   }
 
   // Add Object
   private _addObject(obj: any) {
-    this._verifyObject(obj);
-    db.put(canonicalize(obj), obj, (error, data) => {
+    if(!this._isValidObject(obj)) return
+    let objectID = blake2.createHash(canonicalize(obj.data));
+    db.put(objectID, obj.data, (error, data) => {
       if(error) return;
-      // Update IHAVEOBJECT LOGIC Broadcasting
-      //
+      let peers: string[] = peers.peers;
+      for (var newPeer of newPeers) {
+        const server: string[] = peer.split(":");
+
+        const PORT = Number(server[1]);
+        const SERVER = server[0];
+
+        const socket = new CustomSocket(Net.createConnection({
+          port: PORT,
+          host: SERVER
+        }));
+
+        socket.write({"type": "ihaveobject", "data": objectID});
+      }
     });
   }
 
   // Verify Object is Valid
-  private _verifyObject(obj: any){
+  private _isValidObject(obj: any): boolean {
     // Transaction Validation Logic
   }
 
