@@ -22,6 +22,8 @@ export class MarabuNode {
         console.log(`NODE | TOTAL CONNECTION | ${this.connections.length}`);
       });
     })
+
+    // Start node listening for incoming connections.
     this._server.listen(PORT, '0.0.0.0', () => {
       console.log(`NODE | START | Listening at port: ${PORT}`);
     });

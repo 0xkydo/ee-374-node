@@ -1,5 +1,7 @@
 import { isIP } from "net";
 const isValidDomain = require('is-valid-domain')
+import { z } from "zod";
+
 
 import errors from "../../FIXED_MESSAGES/errors.json"
 
@@ -62,3 +64,32 @@ export default function formatChecker(obj: any): [boolean, any] {
 
 
 }
+
+const hash = z.string().length(64)
+
+const signature = z.string().length(128);
+
+const pubkey = z.string().length(64);
+
+const output = z.object({
+  pubkey: pubkey,
+  value: z.bigint()
+})
+
+const outPoint = z.object({
+  txid :hash,
+  index: z.number().int().positive()
+})
+
+const input = z.object({
+  outpoint: outPoint,
+  sig: signature
+})
+
+const transaction = z.object({
+  type: z.literal('transactions'),
+  inputs: z.array(input),
+  outputs: z.array(output)
+})
+
+type Transaction = z.infer<typeof transaction>;
