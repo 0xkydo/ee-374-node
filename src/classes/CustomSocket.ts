@@ -2,6 +2,7 @@ import { canonicalize } from 'json-canonicalize';
 import { setPeersHandler } from './utils/setPeersHandler'
 import formatChecker from './utils/formatChecker';
 import * as net from 'net';
+import level from 'level-ts';
 
 // Import interfaces for JSON objects
 import { ErrorJSON, HelloJSON } from './interface/JsonInterface';
@@ -9,13 +10,19 @@ import hello from "../FIXED_MESSAGES/hello.json";
 import errors from '../FIXED_MESSAGES/errors.json';
 import peers from '../peers/peers.json';
 import getpeers from '../FIXED_MESSAGES/getpeers.json'
+import ihaveobject from '../FIXED_MESSAGES/ihaveobject.json'
+import getobject from '../FIXED_MESSAGES/getobject.json'
+import object from '../FIXED_MESSAGES/object.json'
 
-
+import DATABASE_PATH from '../constants.ts'
 
 export class CustomSocket {
 
   // Socket
   private _socket: net.Socket;
+
+  // Database
+  private _db = level(DATABASE_PATH);
 
   // Constants
   MAX_BUFFER_SIZE: number = 1 * 1000000;
@@ -158,7 +165,7 @@ export class CustomSocket {
   // _formatChecker checks if the message it received is the correct
   // JSON format, if it is not, it will either end the connection if
   // handshake is not completed or send an invalid format message. If
-  // it can be parsed to JSON in correct format, the object is passed 
+  // it can be parsed to JSON in correct format, the object is passed
   // to the _objRouter for next steps.
   private _messageToJSON(message: string) {
     console.log(`RECE | ${this.remoteAddress} | ${message}`);
@@ -194,6 +201,15 @@ export class CustomSocket {
         case "peers":
           setPeersHandler(obj);
           break;
+        case "getobject":
+          this._sendObject(obj);
+          break;
+        case "ihaveobject":
+          this._requestObject(obj);
+          break;
+        case "object":
+          this._addObject(obj);
+          break;
         default:
           break;
       }
@@ -210,6 +226,36 @@ export class CustomSocket {
   // When asked to get peer, it will return the peers.json file.
   private _getpeersHandler(obj: any) {
     this.write(peers);
+  }
+
+  // Request Object
+  private _requestObject(obj: any) {
+    db.get(canonicalize(obj), (error, data) => {
+      if(error) return;
+      this.write(data)
+    });
+  }
+
+  // Get Object
+  private _getObject(obj: any) {
+    db.get(canonicalize(obj), (error, data) => {
+      if(error) this.write(getobject);
+    });
+  }
+
+  // Add Object
+  private _addObject(obj: any) {
+    this._verifyObject(obj);
+    db.put(canonicalize(obj), obj, (error, data) => {
+      if(error) return;
+      // Update IHAVEOBJECT LOGIC Broadcasting
+      //
+    });
+  }
+
+  // Verify Object is Valid
+  private _verifyObject(obj: any){
+    // Transaction Validation Logic
   }
 
   // _handshakeHandler handles the handshake phase of the protocol.
