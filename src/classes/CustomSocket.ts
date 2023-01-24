@@ -3,7 +3,7 @@ import { setPeersHandler } from './utils/setPeersHandler'
 import formatChecker from './utils/formatChecker';
 import * as net from 'net';
 import level from 'level-ts';
-import blake2 from 'blake2';
+import blake2s from './utils/crypto';
 import * as ed from '@noble/ed25519';
 
 // Import interfaces for JSON objects
@@ -241,8 +241,8 @@ export class CustomSocket {
   // Add Object
   private _addObject(obj: any) {
     if (!this._isValidObject(obj.data)) return
-    let objectID = blake2.createHash(canonicalize(obj.data));
-    db.put(objectID, obj.data, (error, data) => {
+    let objectID = blake2s(canonicalize(obj.data));
+    this._db.put(objectID, obj.data, (error, data) => {
       if (error) return;
       let peers: string[] = peers.peers;
       for (var newPeer of newPeers) {
@@ -251,7 +251,7 @@ export class CustomSocket {
         const PORT = Number(server[1]);
         const SERVER = server[0];
 
-        const socket = new CustomSocket(Net.createConnection({
+        const socket = new CustomSocket(net.createConnection({
           port: PORT,
           host: SERVER
         }));
@@ -276,7 +276,7 @@ export class CustomSocket {
 
     for (let i = 0; i < obj.inputs.length; i++){
       // Ensure that a valid transaction with the given txid exists in your object database
-      db.get(obj.inputs[i].outpoint.txid, (error, data) => {
+      this._db.get(obj.inputs[i].outpoint.txid, (error, data) => {
         if (error) return false;
       });
 
