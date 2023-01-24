@@ -269,7 +269,10 @@ export class CustomSocket {
   private _isValidObject(obj: any): boolean {
     let outputLen = obj.outputs.length;
 
-    for(let i = 0; i < obj.inputs.length; i++){
+    // Coinbase transaction
+    if(obj.height != null) return true;
+
+    for (let i = 0; i < obj.inputs.length; i++){
       // Ensure that a valid transaction with the given txid exists in your object database
       db.get(obj.inputs[i].outpoint.txid, (error, data) => {
         if(error) return false;
@@ -278,33 +281,33 @@ export class CustomSocket {
       // Ensure that given index is less than the number of outputs in the outpoint transaction
       if(obj.inputs[i].outpoint.index >= outputLen) return false;
 
+      // Ensure valid input signature
       let plaintextToSign = obj.inputs[i];
       plaintextToSign.sig = null;
-      // Ensure valid signature
       let message = Uint8Array.from(canonicalize(plaintextToSign));
-      ed.verify(obj.inputs[i].sig, message, obj.outputs[i].pubkey, (error, data) => {
-        if(!data) return false;
+      ed.verify(obj.inputs[i].sig, message, obj.outputs[i].pubkey).then((value) => {
+        if(!value) return false;
       });
+
+      // Ensure pubkey and value keys exist
+      if(obj.outputs[i].pubkey == null || obj.outputs[i].value) return false;
+
+      // Ensure valid output public key
+      var alphanum = /^[a-z0-9]+$/i
+      if(!alphanum.test(obj.outputs[i].pubkey) || obj.outputs[i].pubkey.length != 64) return false;
+
+      // Ensure valid output value
+      if(obj.outputs[i].value < 0) return false;
     }
-
-
-
-    /*
-    For each input, verify the signature. Our protocol uses ed25519 signatures. A
-    Typescript package for ed25519 is available [4]. Note that signatures and public
-    keys are given as hex strings in our protocol but the package uses Uint8 arrays, so
-    you would have to convert between the two.
-    */
-
-    /*
-    Outputs contain a public key and a value. The public keys must be in the correct
-    format and the value must be a non-negative integer.
-    */
 
     /*
     Transactions must respect the law of conservation, i.e. the sum of all input values
     is at least the sum of output values.
     */
+
+    // WILL DO CHECK LATER
+    // Iterate through all outputs, keep tab
+    // Find database entry for txid input and get corresponding outputs
   }
 
   // _handshakeHandler handles the handshake phase of the protocol.
