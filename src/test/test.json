@@ -1,0 +1,23 @@
+{
+  "peer": {
+    "type": "peers",
+    "peers": ["45.63.84.226:18018", "45.63.89.228:18018", "example.com:18018"]
+  },
+  "ihaveobject": {
+    "type": "ihaveobject",
+    "objectid": "50ea3c25f0ff801730b5795e2a90721b215b62a78f492da4b0be916cd3c375c8"
+  },
+  "object": {
+    "type": "object",
+    "object": {
+      "height": 2,
+      "outputs": [
+        {
+          "pubkey": "958f8add086cc348e229a3b6590c71b7d7754e42134a127a50648bf07969d9a0",
+          "value": 50000000000
+        }
+      ],
+      "type": "transaction"
+    }
+  }
+}
