@@ -13,7 +13,7 @@ import errors from '../FIXED_MESSAGES/errors.json';
 import peers from '../peers/peers.json';
 import getpeers from '../FIXED_MESSAGES/getpeers.json'
 
-import { DATABASE_PATH}  from '../constants'
+import { DATABASE_PATH } from '../constants'
 
 export class CustomSocket {
 
@@ -225,17 +225,42 @@ export class CustomSocket {
 
   // Send Object
   private _sendObject(obj: any) {
-    this._db.get(obj.data, (error) => {
-      if (error) return;
-      this.write({ "type": "object", "data": data });
-    });
+    // Check if requested object exists in file.
+    this._db.exists(obj.objectid).then((exists)=>{
+
+      if(exists){
+
+        this._db.get(obj.objectid).then((temp)=>{
+          
+          // Construct the Object JSON file.
+          let tempObject = {"type": "object","object":null};
+          tempObject.type = 'object';
+          tempObject.object = temp;
+
+          // Send over the object.
+          this.write(tempObject);
+        })
+
+      }else{
+        // Requested file does not exist, write back error message.
+        this.write(errors.UNKNOWN_OBJECT);
+      }
+    })
   }
 
   // Request Object
   private _requestObject(obj: any) {
-    db.get(obj.data, (error, data) => {
-      if (error) this.write({ "type": "getobject", "data": obj.data });
-    });
+    // Check if this object already exist in file.
+    this._db.exists(obj.objectid).then((exists) => {
+      if (exists) {
+        // If the object already exists in file, no nothing
+        console.log(`STAT | ${obj.objectid} | Object exists in file`)
+      } else {
+        // If the file does not exist, request object.
+        this.write({ "type": "getobject", "objectid": obj.objectid });
+      }
+    })
+
   }
 
   // Add Object
@@ -264,7 +289,7 @@ export class CustomSocket {
   // Transaction Validation Logic
   private _isValidObject(obj: any): boolean {
 
-    if(!_isValidFormatTX(obj)){
+    if (!_isValidFormatTX(obj)) {
       this._fatalError(errors.INVALID_FORMAT);
       return false;
     }
@@ -274,7 +299,7 @@ export class CustomSocket {
 
     let outputLen = obj.outputs.length;
 
-    for (let i = 0; i < obj.inputs.length; i++){
+    for (let i = 0; i < obj.inputs.length; i++) {
       // Ensure that a valid transaction with the given txid exists in your object database
       this._db.get(obj.inputs[i].outpoint.txid, (error, data) => {
         if (error) return false;
@@ -310,42 +335,42 @@ export class CustomSocket {
     is at least the sum of output values.
     */
 
-    for (let i = 0; i < outputLen; i++){
+    for (let i = 0; i < outputLen; i++) {
       totalInputAmount +=
-      db.get(obj.inputs[i].outpoint.txid, (error, data) => {
-            // iterate through all outputs of data tx and sum up and add to total input amount
-      });
+        db.get(obj.inputs[i].outpoint.txid, (error, data) => {
+          // iterate through all outputs of data tx and sum up and add to total input amount
+        });
 
       totalOutputAmount += obj.outputs[i].value
     }
 
-    if(totalInputAmount < totalOutputAmount) return false;
+    if (totalInputAmount < totalOutputAmount) return false;
 
     return true;
   }
 
   private _isValidFormatTX(obj: any): boolean {
-      if(obj.inputs == null || obj.outputs == null) return false;
+    if (obj.inputs == null || obj.outputs == null) return false;
 
-      for (let i = 0; i < obj.inputs.length; i++){
-        if(obj.inputs[i].outpoint == null || obj.inputs[i].sig == null) return false;
-        if(obj.inputs[i].sig.length != 128) return false;
-        if(obj.inputs[i].outpoint.txid == null || obj.inputs[i].outpoint.index == null) return false;
-        // Ensure valid index value
-        if(obj.inputs[i].outpoint.index < 0) return false;
+    for (let i = 0; i < obj.inputs.length; i++) {
+      if (obj.inputs[i].outpoint == null || obj.inputs[i].sig == null) return false;
+      if (obj.inputs[i].sig.length != 128) return false;
+      if (obj.inputs[i].outpoint.txid == null || obj.inputs[i].outpoint.index == null) return false;
+      // Ensure valid index value
+      if (obj.inputs[i].outpoint.index < 0) return false;
 
-        // Ensure pubkey and value keys exist
-        if(obj.outputs[i].pubkey == null || obj.outputs[i].value) return false;
+      // Ensure pubkey and value keys exist
+      if (obj.outputs[i].pubkey == null || obj.outputs[i].value) return false;
 
-        // Ensure valid output public key
-        var alphanum = /^[a-z0-9]+$/i
-        if(!alphanum.test(obj.outputs[i].pubkey) || obj.outputs[i].pubkey.length != 64) return false;
+      // Ensure valid output public key
+      var alphanum = /^[a-z0-9]+$/i
+      if (!alphanum.test(obj.outputs[i].pubkey) || obj.outputs[i].pubkey.length != 64) return false;
 
-        // Ensure valid output value
-        if(obj.outputs[i].value < 0) return false;
-      }
+      // Ensure valid output value
+      if (obj.outputs[i].value < 0) return false;
+    }
 
-      return true;
+    return true;
   }
 
   // _handshakeHandler handles the handshake phase of the protocol.

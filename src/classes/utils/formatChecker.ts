@@ -1,4 +1,6 @@
+import { stat } from "fs";
 import { isIP } from "net";
+import { z } from 'zod';
 const isValidDomain = require('is-valid-domain')
 
 import errors from "../../FIXED_MESSAGES/errors.json"
@@ -7,8 +9,20 @@ export default function formatChecker(obj: any): [boolean, any] {
 
   switch (obj.type) {
     case 'transaction':
+      let transactionStatus = transaction.safeParse(obj);
+      if(transactionStatus.success){
+
+      }else{
+        return [false, errors.INVALID_FORMAT]
+      }
       break;
     case 'block':
+      let blockStatus = block.safeParse(obj);
+      if(blockStatus.success){
+
+      }else{
+        return [false, errors.INVALID_FORMAT]
+      }
       break;
     case 'hello':
       if (obj.version.slice(0, -1) === "0.9.") {
@@ -45,6 +59,12 @@ export default function formatChecker(obj: any): [boolean, any] {
     case 'ihaveobject':
       break;
     case 'object':
+      let objStatus = object.safeParse(obj);
+      if(objStatus.success){
+
+      }else{
+        return [false, errors.INVALID_FORMAT]
+      }
       break;
     case 'getmempool':
       break;
@@ -60,5 +80,70 @@ export default function formatChecker(obj: any): [boolean, any] {
 
   return [true,null];
 
-
 }
+
+// Intermediate types
+
+const hash = z.string().length(64).regex(new RegExp('^[a-z0-9]+$'))
+
+const signature = z.string().length(128).regex(new RegExp('^[a-z0-9]+$'));
+
+const pubkey = z.string().length(64).regex(new RegExp('^[a-z0-9]+$'));
+
+const output = z.object({
+  pubkey: pubkey,
+  value: z.bigint()
+})
+
+const outPoint = z.object({
+  txid :hash,
+  index: z.number().int().positive()
+})
+
+const input = z.object({
+  outpoint: outPoint,
+  sig: signature
+})
+
+const transactionNonCoinbase = z.object({
+  type: z.literal('transactions'),
+  inputs: z.array(input),
+  outputs: z.array(output)
+})
+
+const transactionCoinbase = z.object({
+  type: z.literal('transaction'),
+  height: z.number().int().positive(),
+  output: z.array(output).length(1)
+})
+
+const block = z.object({
+  type: z.literal('block'),
+  txids: z.array(hash),
+  nonce: z.string().length(64),
+  previd: z.string().length(64),
+  created: z.number().int().positive(),
+  T : z.string()
+})
+
+const transaction = z.union([transactionNonCoinbase,transactionCoinbase])
+
+const objectValue = z.discriminatedUnion("type",[
+  transactionCoinbase,
+  transactionNonCoinbase,
+  block
+])
+
+const iHaveObject = z.object({
+  type: z.literal('ihaveobject'),
+  objectid: hash
+})
+
+const object = z.object({
+  type: z.literal('object'),
+  object: objectValue
+})
+
+
+type Transaction = z.infer<typeof transaction>;
+type IHaveObject = z.infer<typeof iHaveObject>;
