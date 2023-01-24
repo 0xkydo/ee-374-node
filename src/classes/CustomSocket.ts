@@ -6,7 +6,7 @@ import EventEmitter from 'events';
 // Internal
 import { setPeersHandler } from './utils/setPeersHandler'
 import formatChecker from './utils/formatChecker';
-import {blake2s, batchSigVerifier} from './utils/crypto';
+import { blake2s, batchSigVerifier } from './utils/crypto';
 
 
 // Import interfaces for JSON objects
@@ -180,8 +180,7 @@ export class CustomSocket {
       // Parse string into JSON object.
       this.obj = JSON.parse(message);
 
-      var isCorrectFormat = formatChecker(this.obj)[0];
-      var errorMessage = formatChecker(this.obj)[1];
+      var [isCorrectFormat, errorMessage] = formatChecker(this.obj);
 
       // Check if the format is correct
       if (isCorrectFormat) {
@@ -262,6 +261,7 @@ export class CustomSocket {
 
   // Request Object
   private _requestObject(obj: any) {
+
     // Check if this object already exist in file.
     this._db.exists(obj.objectid).then((exists) => {
       if (exists) {
@@ -277,24 +277,37 @@ export class CustomSocket {
 
   // Add Object
   private async _objectHandler(obj: any) {
-    
+
+    console.log('Enter _objectHandler');
+
+    // Find object ID:
+    var tempObj = obj.object;
+    var objectID = blake2s(canonicalize(tempObj));
+
     // Check if object is already in database.
-    let isThere = await this._db.exists(obj.objectid);
+    let isThere = await this._db.exists(objectID);
     if (isThere) {
       // File exists and do nothing.
       return;
     }
 
+    console.log('Checked file exist');
+
     // Check object validity
     let isValid = await this._isValidObject(obj.object)
     // If object is valid.
     if (isValid) {
+
+      console.log('Checked object exist');
+
       // Get objectId in blake2s and check if object exists
       let objectID = blake2s(canonicalize(obj.object));
       await this._db.put(objectID, canonicalize(obj.object));
 
       // TODO: let the node know I have a file and broadcast to all current connections.
       this._socket.emit('object', objectID);
+      console.log('Broadcast signal emitted');
+
     }
   }
 
@@ -310,8 +323,8 @@ export class CustomSocket {
     // Separate logic for transaction and block.
     if (obj.type == 'transaction') {
       return await this._transactionValidation(obj)
-      
-    } else{
+
+    } else {
       return await this._blockValidation(obj);
     }
 
@@ -342,14 +355,14 @@ export class CustomSocket {
       let signature = obj.inputs[i].sig;
 
       if (await this._db.exists(txid)) {
-        var inputTX = await this._db.get(txid);        
-      }else{
+        var inputTX = await this._db.get(txid);
+      } else {
         this._fatalError(errors.UNKNOWN_OBJECT);
         return false;
       }
 
       // Ensure that given index is less than the number of outputs in the outpoint transaction
-      if (index >= inputTX.outputs.length){
+      if (index >= inputTX.outputs.length) {
         this._fatalError(errors.INVALID_TX_OUTPOINT);
         return false;
       };
@@ -372,16 +385,16 @@ export class CustomSocket {
     }
 
     // Check for law of conservation
-    if (totalInputAmount < totalOutputAmount){
+    if (totalInputAmount < totalOutputAmount) {
       this._fatalError(errors.INVALID_TX_CONSERVATION);
       return false;
     };
 
     // Check signature validity
     let message = canonicalize(unSignedTX)
-    if(batchSigVerifier(message,pubkeyArray,sigArray)){
+    if (batchSigVerifier(message, pubkeyArray, sigArray)) {
       return true;
-    }else{
+    } else {
       this._fatalError(errors.INVALID_TX_SIGNATURE);
       return false;
     }

@@ -4,6 +4,7 @@ import { canonicalize } from "json-canonicalize";
 
 import errors from '../FIXED_MESSAGES/errors.json';
 import hello from "../FIXED_MESSAGES/hello_test.json";
+import {transaction} from '../classes/utils/formatChecker'
 import delay from "delay";
 import msg from './test.json'
 
@@ -19,6 +20,13 @@ const host = local;
 // Create a new TCP client.
 const client = new Net.Socket();
 const startTime = Date.now();
+
+var status = transaction.safeParse(msg.object.object)
+
+if(!status.success){
+  console.log(status.error.format())
+}
+
 
 // Send a connection request to the server.
 client.connect({ port: port, host: host }, async function () {

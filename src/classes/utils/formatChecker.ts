@@ -9,21 +9,9 @@ export default function formatChecker(obj: any): [boolean, any] {
 
   switch (obj.type) {
     case 'transaction':
-      let transactionStatus = transaction.safeParse(obj);
-      if (transactionStatus.success) {
-
-      } else {
         return [false, errors.INVALID_FORMAT]
-      }
-      break;
     case 'block':
-      let blockStatus = block.safeParse(obj);
-      if (blockStatus.success) {
-
-      } else {
         return [false, errors.INVALID_FORMAT]
-      }
-      break;
     case 'hello':
       if (obj.version.slice(0, -1) === "0.9.") {
         return [true, null];
@@ -54,8 +42,6 @@ export default function formatChecker(obj: any): [boolean, any] {
         }
       }
       break;
-    case 'getobject':
-      break;
     case 'ihaveobject':
       let iHaveObjStatus = iHaveObject.safeParse(obj);
       if (iHaveObjStatus.success) {
@@ -67,25 +53,21 @@ export default function formatChecker(obj: any): [boolean, any] {
     case 'object':
       if (obj.object.type == 'transaction') {
         let transactionStatus = transaction.safeParse(obj.object);
-        console.log(`going though this 1`);
         console.log(transactionStatus.success);
 
         if (transactionStatus.success) {
 
         } else {
-          console.log(`going though this 2`)
           return [false, errors.INVALID_FORMAT]
         }
       } else {
         let blockStatus = block.safeParse(obj.object);
-        console.log(`going though this 3`)
 
 
         if (blockStatus.success) {
 
         } else {
-          console.log(`block error`)
-          console.log(`going though this 4`)
+
           return [false, errors.INVALID_FORMAT]
         }
       }
@@ -138,7 +120,7 @@ const transactionNonCoinbase = z.object({
 const transactionCoinbase = z.object({
   type: z.literal('transaction'),
   height: z.number().int().positive(),
-  output: z.array(output).length(1)
+  outputs: z.array(output).length(1)
 })
 
 const block = z.object({
@@ -150,12 +132,13 @@ const block = z.object({
   T: z.string()
 })
 
-const transaction = z.union([transactionNonCoinbase, transactionCoinbase])
+export const transaction = z.union([transactionNonCoinbase, transactionCoinbase])
 
 // const objectValue = z.discriminatedUnion("type", [
 //   transaction,
 //   block
 // ])
+
 
 const iHaveObject = z.object({
   type: z.literal('ihaveobject'),
