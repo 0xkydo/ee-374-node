@@ -65,24 +65,20 @@ export class CustomSocket {
   // it will write an internal error message.
   write(data: object): boolean {
 
+    // If socket is destroyed, do not write and return false.
+    if (this._socket.destroyed) {
+      return false;
+    }
+
     try {
       // Canonicalize data object
       let jsonCanon: string = canonicalize(data);
-      // If socket is destroyed, do not write.
-      if (this._socket.destroyed) {
-        return false;
-      } else {
-        console.log(`SENT | ${this.remoteAddress} | ${jsonCanon} `)
-        return this._socket.write(jsonCanon + '\n');
-      }
+      console.log(`SENT | ${this.remoteAddress} | ${jsonCanon} `)
+      return this._socket.write(jsonCanon + '\n');
     } catch (error) {
       console.error(error);
-      if (this._socket.destroyed) {
-        return false;
-      } else {
-        console.log(`NERR | ${this.remoteAddress} | ${canonicalize(errors.INTERNAL_ERROR)}`);
-        return this._socket.write(canonicalize(errors.INTERNAL_ERROR) + '\n');
-      }
+      console.log(`NERR | ${this.remoteAddress} | ${canonicalize(errors.INTERNAL_ERROR)}`);
+      return this._socket.write(canonicalize(errors.INTERNAL_ERROR) + '\n');
     }
   }
 
@@ -230,24 +226,24 @@ export class CustomSocket {
   // Send Object
   private _sendObject(obj: any) {
     db.get(obj.data, (error, data) => {
-      if(error) return;
-      this.write({"type": "object", "data": data});
+      if (error) return;
+      this.write({ "type": "object", "data": data });
     });
   }
 
   // Request Object
   private _requestObject(obj: any) {
     db.get(obj.data, (error, data) => {
-      if(error) this.write({"type": "getobject", "data": obj.data});
+      if (error) this.write({ "type": "getobject", "data": obj.data });
     });
   }
 
   // Add Object
   private _addObject(obj: any) {
-    if(!this._isValidObject(obj.data)) return
+    if (!this._isValidObject(obj.data)) return
     let objectID = blake2.createHash(canonicalize(obj.data));
     db.put(objectID, obj.data, (error, data) => {
-      if(error) return;
+      if (error) return;
       let peers: string[] = peers.peers;
       for (var newPeer of newPeers) {
         const server: string[] = peer.split(":");
@@ -260,7 +256,7 @@ export class CustomSocket {
           host: SERVER
         }));
 
-        socket.write({"type": "ihaveobject", "data": objectID});
+        socket.write({ "type": "ihaveobject", "data": objectID });
       }
     });
   }
@@ -274,26 +270,36 @@ export class CustomSocket {
     }
 
     // Coinbase transaction
-    if(obj.height != null) return true;
+    if (obj.height != null) return true;
 
     let outputLen = obj.outputs.length;
 
     for (let i = 0; i < obj.inputs.length; i++){
       // Ensure that a valid transaction with the given txid exists in your object database
       db.get(obj.inputs[i].outpoint.txid, (error, data) => {
-        if(error) return false;
+        if (error) return false;
       });
 
       // Ensure that given index is less than the number of outputs in the outpoint transaction
-      if(obj.inputs[i].outpoint.index >= outputLen) return false;
+      if (obj.inputs[i].outpoint.index >= outputLen) return false;
 
       // Ensure valid input signature
       let plaintextToSign = obj.inputs[i];
       plaintextToSign.sig = null;
       let message = Uint8Array.from(canonicalize(plaintextToSign));
       ed.verify(obj.inputs[i].sig, message, obj.outputs[i].pubkey).then((value) => {
-        if(!value) return false;
+        if (!value) return false;
       });
+
+      // Ensure pubkey and value keys exist
+      if (obj.outputs[i].pubkey == null || obj.outputs[i].value) return false;
+
+      // Ensure valid output public key
+      var alphanum = /^[a-z0-9]+$/i
+      if (!alphanum.test(obj.outputs[i].pubkey) || obj.outputs[i].pubkey.length != 64) return false;
+
+      // Ensure valid output value
+      if (obj.outputs[i].value < 0) return false;
     }
 
     let totalInputAmount = 0;
