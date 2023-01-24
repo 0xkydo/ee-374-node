@@ -66,25 +66,28 @@ export default function formatChecker(obj: any): [boolean, any] {
       break;
     case 'object':
       if (obj.object.type == 'transaction') {
-
         let transactionStatus = transaction.safeParse(obj.object);
+        console.log(`going though this 1`);
+        console.log(transactionStatus.success);
+
         if (transactionStatus.success) {
 
         } else {
-          console.log(`going though this 1`)
+          console.log(`going though this 2`)
           return [false, errors.INVALID_FORMAT]
         }
-
       } else {
-
         let blockStatus = block.safeParse(obj.object);
+        console.log(`going though this 3`)
+
+
         if (blockStatus.success) {
 
         } else {
           console.log(`block error`)
+          console.log(`going though this 4`)
           return [false, errors.INVALID_FORMAT]
         }
-
       }
       break;
     case 'getmempool':
