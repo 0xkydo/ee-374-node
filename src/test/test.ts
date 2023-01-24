@@ -14,7 +14,7 @@ const test = '45.63.89.228';
 
 // The port number and hostname of the server.
 const port = 18018;
-const host = test;
+const host = local;
 
 // Create a new TCP client.
 const client = new Net.Socket();
@@ -24,20 +24,12 @@ const startTime = Date.now();
 client.connect({ port: port, host: host }, async function () {
   // If there is no error, the server has accepted the request and created a new 
   // socket dedicated to us.
-  console.log('TCP connection established with the server.');
 
-  const endTime = Date.now();
-  // Calculate the latency
-  const latency = endTime - startTime;
-  console.log(`Latency: ${latency}ms`);
-  client.write(canonicalize(hello))
+  client.write(canonicalize(hello)+'\n')
 
-  client.write('\n' + canonicalize({ "type": "getpeers" }) + '\n');
-
-  // The client can now send data to the server by writing to its socket.
   console.log(`message sent.`)
-  // client.write('\n');
-  // client.write(canonicalize({ "type": "getpeers" }) + '\n');
+
+  client.write('{"type": "ihaveobject","objectid": "0024839ec96326ba3b4bda1d4bd79be9ae78e7e1e813ddd8"}\n');
 
 
 });

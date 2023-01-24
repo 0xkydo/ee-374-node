@@ -1,1 +1,1 @@
-export const DATABASE_PATH = "ee-374-node/src/db/database";
+export const DATABASE_PATH = "src/database";

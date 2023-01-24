@@ -57,6 +57,12 @@ export default function formatChecker(obj: any): [boolean, any] {
     case 'getobject':
       break;
     case 'ihaveobject':
+      let iHaveObjStatus = iHaveObject.safeParse(obj);
+      if(iHaveObjStatus.success){
+
+      }else{
+        return[false, errors.INVALID_FORMAT];
+      }
       break;
     case 'object':
       let objStatus = object.safeParse(obj);
@@ -145,5 +151,5 @@ const object = z.object({
 })
 
 
-export type Transaction = z.infer<typeof transaction>;
+type Transaction = z.infer<typeof transaction>;
 type IHaveObject = z.infer<typeof iHaveObject>;

@@ -1,12 +1,11 @@
 import { canonicalize } from 'json-canonicalize';
 import * as net from 'net';
 import level from 'level-ts';
-import * as ed from '@noble/ed25519';
 import EventEmitter from 'events';
 
 // Internal
 import { setPeersHandler } from './utils/setPeersHandler'
-import formatChecker, { Transaction } from './utils/formatChecker';
+import formatChecker from './utils/formatChecker';
 import {blake2s, batchSigVerifier} from './utils/crypto';
 
 
