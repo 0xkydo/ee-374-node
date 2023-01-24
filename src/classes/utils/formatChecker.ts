@@ -10,17 +10,17 @@ export default function formatChecker(obj: any): [boolean, any] {
   switch (obj.type) {
     case 'transaction':
       let transactionStatus = transaction.safeParse(obj);
-      if(transactionStatus.success){
+      if (transactionStatus.success) {
 
-      }else{
+      } else {
         return [false, errors.INVALID_FORMAT]
       }
       break;
     case 'block':
       let blockStatus = block.safeParse(obj);
-      if(blockStatus.success){
+      if (blockStatus.success) {
 
-      }else{
+      } else {
         return [false, errors.INVALID_FORMAT]
       }
       break;
@@ -28,7 +28,7 @@ export default function formatChecker(obj: any): [boolean, any] {
       if (obj.version.slice(0, -1) === "0.9.") {
         return [true, null];
       } else {
-        return [false,errors.INVALID_FORMAT];
+        return [false, errors.INVALID_FORMAT];
       }
     case 'error':
       break;
@@ -36,20 +36,20 @@ export default function formatChecker(obj: any): [boolean, any] {
       break;
     case 'peers':
       // Check if all peers are in valid formats.
-      for(var peer of obj.peers){
+      for (var peer of obj.peers) {
 
         // Check if format is correct and only has 1 ":"
-        if(peer.split(":").length!==2){
-          return [false,errors.INVALID_FORMAT];
+        if (peer.split(":").length !== 2) {
+          return [false, errors.INVALID_FORMAT];
         }
 
         // Parse IP and PORT number.
         var IP = peer.split(":")[0];
         var PORT = Number(peer.split(":")[1]);
         // Check if the IP is IP, and the PORT is number 1-65535.
-        if(!isIP(IP) || PORT < 1 || PORT > 65535 ){
-          if(!isValidDomain(IP) || PORT < 1 || PORT > 65535){
-            return [false,errors.INVALID_FORMAT];
+        if (!isIP(IP) || PORT < 1 || PORT > 65535) {
+          if (!isValidDomain(IP) || PORT < 1 || PORT > 65535) {
+            return [false, errors.INVALID_FORMAT];
           }
         }
       }
@@ -58,18 +58,33 @@ export default function formatChecker(obj: any): [boolean, any] {
       break;
     case 'ihaveobject':
       let iHaveObjStatus = iHaveObject.safeParse(obj);
-      if(iHaveObjStatus.success){
+      if (iHaveObjStatus.success) {
 
-      }else{
-        return[false, errors.INVALID_FORMAT];
+      } else {
+        return [false, errors.INVALID_FORMAT];
       }
       break;
     case 'object':
-      let objStatus = object.safeParse(obj);
-      if(objStatus.success){
+      if (obj.object.type == 'transaction') {
 
-      }else{
-        return [false, errors.INVALID_FORMAT]
+        let transactionStatus = transaction.safeParse(obj.object);
+        if (transactionStatus.success) {
+
+        } else {
+          console.log(`going though this 1`)
+          return [false, errors.INVALID_FORMAT]
+        }
+
+      } else {
+
+        let blockStatus = block.safeParse(obj.object);
+        if (blockStatus.success) {
+
+        } else {
+          console.log(`block error`)
+          return [false, errors.INVALID_FORMAT]
+        }
+
       }
       break;
     case 'getmempool':
@@ -81,10 +96,10 @@ export default function formatChecker(obj: any): [boolean, any] {
     case 'chaintip':
       break;
     default:
-      return [false,errors.INVALID_FORMAT];
+      return [false, errors.INVALID_FORMAT];
   }
 
-  return [true,null];
+  return [true, null];
 
 }
 
@@ -98,11 +113,11 @@ const pubkey = z.string().length(64).regex(new RegExp('^[a-z0-9]+$'));
 
 const output = z.object({
   pubkey: pubkey,
-  value: z.bigint()
+  value: z.number()
 })
 
 const outPoint = z.object({
-  txid :hash,
+  txid: hash,
   index: z.number().int().positive()
 })
 
@@ -112,7 +127,7 @@ const input = z.object({
 })
 
 const transactionNonCoinbase = z.object({
-  type: z.literal('transactions'),
+  type: z.literal('transaction'),
   inputs: z.array(input),
   outputs: z.array(output)
 })
@@ -129,26 +144,25 @@ const block = z.object({
   nonce: z.string().length(64),
   previd: z.string().length(64),
   created: z.number().int().positive(),
-  T : z.string()
+  T: z.string()
 })
 
-const transaction = z.union([transactionNonCoinbase,transactionCoinbase])
+const transaction = z.union([transactionNonCoinbase, transactionCoinbase])
 
-const objectValue = z.discriminatedUnion("type",[
-  transactionCoinbase,
-  transactionNonCoinbase,
-  block
-])
+// const objectValue = z.discriminatedUnion("type", [
+//   transaction,
+//   block
+// ])
 
 const iHaveObject = z.object({
   type: z.literal('ihaveobject'),
   objectid: hash
 })
 
-const object = z.object({
-  type: z.literal('object'),
-  object: objectValue
-})
+// const object = z.object({
+//   type: z.literal('object'),
+//   object: objectValue
+// })
 
 
 type Transaction = z.infer<typeof transaction>;

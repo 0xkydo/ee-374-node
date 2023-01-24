@@ -4,8 +4,8 @@ import { canonicalize } from "json-canonicalize";
 
 import errors from '../FIXED_MESSAGES/errors.json';
 import hello from "../FIXED_MESSAGES/hello_test.json";
-import peers from '../peers/peers_test.json';
 import delay from "delay";
+import msg from './test.json'
 
 const nodeAddy = '54.67.110.108';
 const monitorAddy = '52.53.175.221';
@@ -29,7 +29,11 @@ client.connect({ port: port, host: host }, async function () {
 
   console.log(`message sent.`)
 
-  client.write('{"type": "ihaveobject","objectid": "0024839ec96326ba3b4bda1d4bd79be9ae78e7e1e813ddd8"}\n');
+  client.write(canonicalize(msg.ihaveobject)+'\n');
+
+  await delay(3000);
+
+  client.write(canonicalize(msg.object)+'\n');
 
 
 });

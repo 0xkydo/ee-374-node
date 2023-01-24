@@ -104,7 +104,7 @@ export class CustomSocket {
   on(event: 'lookup', listener: (err: Error, address: string, family: string | number, host: string) => void): void;
   on(event: 'ready', listener: () => void): void;
   on(event: 'timeout', listener: () => void): void;
-  on(event: 'object', listener: (data: any) => void): void;
+  on(event: 'object', listener: (data: string) => void): void;
   on(event: string, listener: (...args: any[]) => void) {
     switch (event) {
       case 'data':
@@ -292,7 +292,9 @@ export class CustomSocket {
       // Get objectId in blake2s and check if object exists
       let objectID = blake2s(canonicalize(obj.object));
       await this._db.put(objectID, canonicalize(obj.object));
+
       // TODO: let the node know I have a file and broadcast to all current connections.
+      this._socket.emit('object', objectID);
     }
   }
 
