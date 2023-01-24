@@ -13,7 +13,7 @@ import errors from '../FIXED_MESSAGES/errors.json';
 import peers from '../peers/peers.json';
 import getpeers from '../FIXED_MESSAGES/getpeers.json'
 
-import DATABASE_PATH from '../constants.ts'
+import { DATABASE_PATH}  from '../constants'
 
 export class CustomSocket {
 
@@ -21,7 +21,7 @@ export class CustomSocket {
   private _socket: net.Socket;
 
   // Database
-  private _db = level(DATABASE_PATH);
+  private _db = new level(DATABASE_PATH);
 
   // Constants
   MAX_BUFFER_SIZE: number = 1 * 1000000;
@@ -225,7 +225,7 @@ export class CustomSocket {
 
   // Send Object
   private _sendObject(obj: any) {
-    db.get(obj.data, (error, data) => {
+    this._db.get(obj.data, (error) => {
       if (error) return;
       this.write({ "type": "object", "data": data });
     });
