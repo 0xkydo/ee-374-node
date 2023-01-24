@@ -1,10 +1,13 @@
 import { canonicalize } from 'json-canonicalize';
-import { setPeersHandler } from './utils/setPeersHandler'
-import formatChecker from './utils/formatChecker';
 import * as net from 'net';
 import level from 'level-ts';
 import blake2s from './utils/crypto';
 import * as ed from '@noble/ed25519';
+import EventEmitter from 'events';
+
+// Internal
+import { setPeersHandler } from './utils/setPeersHandler'
+import formatChecker from './utils/formatChecker';
 
 // Import interfaces for JSON objects
 import { ErrorJSON, HelloJSON } from './interface/JsonInterface';
@@ -22,6 +25,9 @@ export class CustomSocket {
 
   // Database
   private _db = new level(DATABASE_PATH);
+
+  // Event Emitter
+  private _emitter = new EventEmitter();
 
   // Constants
   MAX_BUFFER_SIZE: number = 1 * 1000000;
@@ -51,6 +57,11 @@ export class CustomSocket {
     this._socket.setTimeout(10000);
     // Store remoteAddress in peer format.
     this.remoteAddress = `${socket.remoteAddress}:${socket.remotePort}`;
+
+    // Set socket.on functions
+    this._socket.on('data', (data) => { this._dataHandler(data) });
+    this._socket.on('timeout', () => { this._timeoutHandler() });
+
 
     console.log(`CONN | ${this.remoteAddress} | CustomSocket class wrapped`);
 
@@ -96,10 +107,10 @@ export class CustomSocket {
   on(event: string, listener: (...args: any[]) => void) {
     switch (event) {
       case 'data':
-        this._socket.on('data', (data) => { this._dataHandler(data) })
+        this._socket.on('data', (data) => { listener(data) })
         break;
       case 'timeout':
-        this._socket.on('timeout', () => { this._timeoutHandler() });
+        this._socket.on('timeout', () => { listener() });
       default:
         this._socket.on(event, listener);
         break;
@@ -203,7 +214,7 @@ export class CustomSocket {
           this._requestObject(obj);
           break;
         case "object":
-          this._addObject(obj);
+          this._objectHandler(obj);
           break;
         default:
           break;
@@ -264,35 +275,34 @@ export class CustomSocket {
   }
 
   // Add Object
-  private _addObject(obj: any) {
-    if (!this._isValidObject(obj.data)) return
-    let objectID = blake2s(canonicalize(obj.data));
-    this._db.put(objectID, obj.data, (error, data) => {
-      if (error) return;
-      let peers: string[] = peers.peers;
-      for (var newPeer of newPeers) {
-        const server: string[] = peer.split(":");
+  private _objectHandler(obj: any) {
+    // Check object validity
+    if (!this._isValidObject(obj.object)) return;
 
-        const PORT = Number(server[1]);
-        const SERVER = server[0];
+    // Get objectId in blake2s and check if object exists
+    let objectID = blake2s(canonicalize(obj.object));
+    this._db.exists(obj.objectid).then(async (exists) => {
+      if (exists) {
+        // File exists and do nothing.
+        return;   
+      } else {
+        // Store file in database.
+        await this._db.put(objectID,canonicalize(obj.object));
 
-        const socket = new CustomSocket(net.createConnection({
-          port: PORT,
-          host: SERVER
-        }));
-
-        socket.write({ "type": "ihaveobject", "data": objectID });
+        // TODO: let the node know I have a file and broadcast to all current connections.
+        return;
       }
-    });
+    })
   }
 
   // Transaction Validation Logic
   private _isValidObject(obj: any): boolean {
 
-    if (!_isValidFormatTX(obj)) {
-      this._fatalError(errors.INVALID_FORMAT);
-      return false;
-    }
+    // I think we can remove all this because I check the format of the object within the formatCheckers
+    // if (!this._isValidFormatTX(obj)) {
+    //   this._fatalError(errors.INVALID_FORMAT);
+    //   return false;
+    // }
 
     // Coinbase transaction
     if (obj.height != null) return true;

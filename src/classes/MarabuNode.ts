@@ -14,8 +14,6 @@ export class MarabuNode {
       let socket = new CustomSocket(_socket);
       this.connections.push(socket);
       console.log(`NODE | TOTAL CONNECTION | ${this.connections.length}`);
-      socket.on('data', (data) => { });
-      socket.on('timeout', () => { });
       socket.on('close', () => {
         console.log(`NODE | REMOVED SOCKET | ${socket.remoteAddress}`);
         this.connections = this.connections.filter((_socket) => _socket !== socket);
