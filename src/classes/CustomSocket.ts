@@ -267,10 +267,16 @@ export class CustomSocket {
 
   // Transaction Validation Logic
   private _isValidObject(obj: any): boolean {
-    let outputLen = obj.outputs.length;
+
+    if(!_isValidFormatTX(obj)){
+      this._fatalError(errors.INVALID_FORMAT);
+      return false;
+    }
 
     // Coinbase transaction
     if(obj.height != null) return true;
+
+    let outputLen = obj.outputs.length;
 
     for (let i = 0; i < obj.inputs.length; i++){
       // Ensure that a valid transaction with the given txid exists in your object database
@@ -288,26 +294,52 @@ export class CustomSocket {
       ed.verify(obj.inputs[i].sig, message, obj.outputs[i].pubkey).then((value) => {
         if(!value) return false;
       });
-
-      // Ensure pubkey and value keys exist
-      if(obj.outputs[i].pubkey == null || obj.outputs[i].value) return false;
-
-      // Ensure valid output public key
-      var alphanum = /^[a-z0-9]+$/i
-      if(!alphanum.test(obj.outputs[i].pubkey) || obj.outputs[i].pubkey.length != 64) return false;
-
-      // Ensure valid output value
-      if(obj.outputs[i].value < 0) return false;
     }
+
+    let totalInputAmount = 0;
+    let totalOutputAmount = 0;
 
     /*
     Transactions must respect the law of conservation, i.e. the sum of all input values
     is at least the sum of output values.
     */
 
-    // WILL DO CHECK LATER
-    // Iterate through all outputs, keep tab
-    // Find database entry for txid input and get corresponding outputs
+    for (let i = 0; i < outputLen; i++){
+      totalInputAmount +=
+      db.get(obj.inputs[i].outpoint.txid, (error, data) => {
+            // iterate through all outputs of data tx and sum up and add to total input amount
+      });
+
+      totalOutputAmount += obj.outputs[i].value
+    }
+
+    if(totalInputAmount < totalOutputAmount) return false;
+
+    return true;
+  }
+
+  private _isValidFormatTX(obj: any): boolean {
+      if(obj.inputs == null || obj.outputs == null) return false;
+
+      for (let i = 0; i < obj.inputs.length; i++){
+        if(obj.inputs[i].outpoint == null || obj.inputs[i].sig == null) return false;
+        if(obj.inputs[i].sig.length != 128) return false;
+        if(obj.inputs[i].outpoint.txid == null || obj.inputs[i].outpoint.index == null) return false;
+        // Ensure valid index value
+        if(obj.inputs[i].outpoint.index < 0) return false;
+
+        // Ensure pubkey and value keys exist
+        if(obj.outputs[i].pubkey == null || obj.outputs[i].value) return false;
+
+        // Ensure valid output public key
+        var alphanum = /^[a-z0-9]+$/i
+        if(!alphanum.test(obj.outputs[i].pubkey) || obj.outputs[i].pubkey.length != 64) return false;
+
+        // Ensure valid output value
+        if(obj.outputs[i].value < 0) return false;
+      }
+
+      return true;
   }
 
   // _handshakeHandler handles the handshake phase of the protocol.
