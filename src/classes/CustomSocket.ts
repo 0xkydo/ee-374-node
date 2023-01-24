@@ -4,6 +4,7 @@ import formatChecker from './utils/formatChecker';
 import * as net from 'net';
 import level from 'level-ts';
 import blake2 from 'blake2';
+import * as ed from '@noble/ed25519';
 
 // Import interfaces for JSON objects
 import { ErrorJSON, HelloJSON } from './interface/JsonInterface';
@@ -243,7 +244,7 @@ export class CustomSocket {
 
   // Add Object
   private _addObject(obj: any) {
-    if(!this._isValidObject(obj)) return
+    if(!this._isValidObject(obj.data)) return
     let objectID = blake2.createHash(canonicalize(obj.data));
     db.put(objectID, obj.data, (error, data) => {
       if(error) return;
@@ -264,9 +265,46 @@ export class CustomSocket {
     });
   }
 
-  // Verify Object is Valid
+  // Transaction Validation Logic
   private _isValidObject(obj: any): boolean {
-    // Transaction Validation Logic
+    let outputLen = obj.outputs.length;
+
+    for(let i = 0; i < obj.inputs.length; i++){
+      // Ensure that a valid transaction with the given txid exists in your object database
+      db.get(obj.inputs[i].outpoint.txid, (error, data) => {
+        if(error) return false;
+      });
+
+      // Ensure that given index is less than the number of outputs in the outpoint transaction
+      if(obj.inputs[i].outpoint.index >= outputLen) return false;
+
+      let plaintextToSign = obj.inputs[i];
+      plaintextToSign.sig = null;
+      // Ensure valid signature
+      let message = Uint8Array.from(canonicalize(plaintextToSign));
+      ed.verify(obj.inputs[i].sig, message, obj.outputs[i].pubkey, (error, data) => {
+        if(!data) return false;
+      });
+    }
+
+
+
+    /*
+    For each input, verify the signature. Our protocol uses ed25519 signatures. A
+    Typescript package for ed25519 is available [4]. Note that signatures and public
+    keys are given as hex strings in our protocol but the package uses Uint8 arrays, so
+    you would have to convert between the two.
+    */
+
+    /*
+    Outputs contain a public key and a value. The public keys must be in the correct
+    format and the value must be a non-negative integer.
+    */
+
+    /*
+    Transactions must respect the law of conservation, i.e. the sum of all input values
+    is at least the sum of output values.
+    */
   }
 
   // _handshakeHandler handles the handshake phase of the protocol.
