@@ -145,5 +145,5 @@ const object = z.object({
 })
 
 
-type Transaction = z.infer<typeof transaction>;
+export type Transaction = z.infer<typeof transaction>;
 type IHaveObject = z.infer<typeof iHaveObject>;

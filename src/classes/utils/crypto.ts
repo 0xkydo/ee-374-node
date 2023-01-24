@@ -2,7 +2,7 @@ import blake2 from 'blake2';
 
 // @notice input is string only.
 // Output hexified hash digest.
-export default function blake2s(data: string): string{
+export function blake2s(data: string): string{
   // Create blake2s hash algo
   let hash = blake2.createHash('blake2s');
   // Hash
@@ -10,4 +10,10 @@ export default function blake2s(data: string): string{
   
   return hash.digest('hex');
   
+}
+
+export function batchSigVerifier(message: string, pubkeyArray: string[], sigArray: string[]): boolean{
+
+  return true;
+
 }

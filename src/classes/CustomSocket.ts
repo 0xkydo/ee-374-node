@@ -1,13 +1,14 @@
 import { canonicalize } from 'json-canonicalize';
 import * as net from 'net';
 import level from 'level-ts';
-import blake2s from './utils/crypto';
 import * as ed from '@noble/ed25519';
 import EventEmitter from 'events';
 
 // Internal
 import { setPeersHandler } from './utils/setPeersHandler'
-import formatChecker from './utils/formatChecker';
+import formatChecker, { Transaction } from './utils/formatChecker';
+import {blake2s, batchSigVerifier} from './utils/crypto';
+
 
 // Import interfaces for JSON objects
 import { ErrorJSON, HelloJSON } from './interface/JsonInterface';
@@ -104,6 +105,7 @@ export class CustomSocket {
   on(event: 'lookup', listener: (err: Error, address: string, family: string | number, host: string) => void): void;
   on(event: 'ready', listener: () => void): void;
   on(event: 'timeout', listener: () => void): void;
+  on(event: 'object', listener: (data: any) => void): void;
   on(event: string, listener: (...args: any[]) => void) {
     switch (event) {
       case 'data':
@@ -237,14 +239,14 @@ export class CustomSocket {
   // Send Object
   private _sendObject(obj: any) {
     // Check if requested object exists in file.
-    this._db.exists(obj.objectid).then((exists)=>{
+    this._db.exists(obj.objectid).then((exists) => {
 
-      if(exists){
+      if (exists) {
 
-        this._db.get(obj.objectid).then((temp)=>{
-          
+        this._db.get(obj.objectid).then((temp) => {
+
           // Construct the Object JSON file.
-          let tempObject = {"type": "object","object":null};
+          let tempObject = { "type": "object", "object": null };
           tempObject.type = 'object';
           tempObject.object = temp;
 
@@ -252,7 +254,7 @@ export class CustomSocket {
           this.write(tempObject);
         })
 
-      }else{
+      } else {
         // Requested file does not exist, write back error message.
         this.write(errors.UNKNOWN_OBJECT);
       }
@@ -275,28 +277,28 @@ export class CustomSocket {
   }
 
   // Add Object
-  private _objectHandler(obj: any) {
+  private async _objectHandler(obj: any) {
+    
+    // Check if object is already in database.
+    let isThere = await this._db.exists(obj.objectid);
+    if (isThere) {
+      // File exists and do nothing.
+      return;
+    }
+
     // Check object validity
-    if (!this._isValidObject(obj.object)) return;
-
-    // Get objectId in blake2s and check if object exists
-    let objectID = blake2s(canonicalize(obj.object));
-    this._db.exists(obj.objectid).then(async (exists) => {
-      if (exists) {
-        // File exists and do nothing.
-        return;   
-      } else {
-        // Store file in database.
-        await this._db.put(objectID,canonicalize(obj.object));
-
-        // TODO: let the node know I have a file and broadcast to all current connections.
-        return;
-      }
-    })
+    let isValid = await this._isValidObject(obj.object)
+    // If object is valid.
+    if (isValid) {
+      // Get objectId in blake2s and check if object exists
+      let objectID = blake2s(canonicalize(obj.object));
+      await this._db.put(objectID, canonicalize(obj.object));
+      // TODO: let the node know I have a file and broadcast to all current connections.
+    }
   }
 
   // Transaction Validation Logic
-  private _isValidObject(obj: any): boolean {
+  private async _isValidObject(obj: any): Promise<boolean> {
 
     // I think we can remove all this because I check the format of the object within the formatCheckers
     // if (!this._isValidFormatTX(obj)) {
@@ -304,84 +306,111 @@ export class CustomSocket {
     //   return false;
     // }
 
+    // Separate logic for transaction and block.
+    if (obj.type == 'transaction') {
+      return await this._transactionValidation(obj)
+      
+    } else{
+      return await this._blockValidation(obj);
+    }
+
+  }
+  private _blockValidation(obj: any): boolean {
+    return true;
+  }
+
+  private async _transactionValidation(obj: any): Promise<boolean> {
+
     // Coinbase transaction
     if (obj.height != null) return true;
 
-    let outputLen = obj.outputs.length;
+    // Initiate variables for signature checking.
+    var unSignedTX = obj;
+    var pubkeyArray: string[] = [];
+    var sigArray: string[] = [];
+
+    // Initiate variables for checking law of conservation.
+    var totalInputAmount = 0;
+    var totalOutputAmount = 0;
+    var outputLen = obj.outputs.length;
 
     for (let i = 0; i < obj.inputs.length; i++) {
       // Ensure that a valid transaction with the given txid exists in your object database
-      this._db.get(obj.inputs[i].outpoint.txid, (error, data) => {
-        if (error) return false;
-      });
+      let txid = obj.inputs[i].outpoint.txid;
+      let index = obj.inputs[i].outpoint.index;
+      let signature = obj.inputs[i].sig;
+
+      if (await this._db.exists(txid)) {
+        var inputTX = await this._db.get(txid);        
+      }else{
+        this._fatalError(errors.UNKNOWN_OBJECT);
+        return false;
+      }
 
       // Ensure that given index is less than the number of outputs in the outpoint transaction
-      if (obj.inputs[i].outpoint.index >= outputLen) return false;
+      if (index >= inputTX.outputs.length){
+        this._fatalError(errors.INVALID_TX_OUTPOINT);
+        return false;
+      };
 
-      // Ensure valid input signature
-      let plaintextToSign = obj.inputs[i];
-      plaintextToSign.sig = null;
-      let message = Uint8Array.from(canonicalize(plaintextToSign));
-      ed.verify(obj.inputs[i].sig, message, obj.outputs[i].pubkey).then((value) => {
-        if (!value) return false;
-      });
+      // Remove current signature in unsigned tx
+      unSignedTX.inputs[i].sig = null;
+      // Store the pk for the input tx in pubkey array
+      pubkeyArray.push(inputTX.outputs[index].pubkey);
+      // Store the signature for the entire message in signature array
+      sigArray.push(signature);
 
-      // Ensure pubkey and value keys exist
-      if (obj.outputs[i].pubkey == null || obj.outputs[i].value) return false;
+      // Add input value from the current outpoint to totalInputAmount
+      totalInputAmount += inputTX.outputs[index].value;
 
-      // Ensure valid output public key
-      var alphanum = /^[a-z0-9]+$/i
-      if (!alphanum.test(obj.outputs[i].pubkey) || obj.outputs[i].pubkey.length != 64) return false;
-
-      // Ensure valid output value
-      if (obj.outputs[i].value < 0) return false;
     }
 
-    let totalInputAmount = 0;
-    let totalOutputAmount = 0;
-
-    /*
-    Transactions must respect the law of conservation, i.e. the sum of all input values
-    is at least the sum of output values.
-    */
-
+    // Calculate totalOutputAmount by iterating all value's in obj.outputs
     for (let i = 0; i < outputLen; i++) {
-      totalInputAmount +=
-        db.get(obj.inputs[i].outpoint.txid, (error, data) => {
-          // iterate through all outputs of data tx and sum up and add to total input amount
-        });
-
-      totalOutputAmount += obj.outputs[i].value
+      totalOutputAmount += obj.outputs[i].value;
     }
 
-    if (totalInputAmount < totalOutputAmount) return false;
+    // Check for law of conservation
+    if (totalInputAmount < totalOutputAmount){
+      this._fatalError(errors.INVALID_TX_CONSERVATION);
+      return false;
+    };
 
-    return true;
-  }
-
-  private _isValidFormatTX(obj: any): boolean {
-    if (obj.inputs == null || obj.outputs == null) return false;
-
-    for (let i = 0; i < obj.inputs.length; i++) {
-      if (obj.inputs[i].outpoint == null || obj.inputs[i].sig == null) return false;
-      if (obj.inputs[i].sig.length != 128) return false;
-      if (obj.inputs[i].outpoint.txid == null || obj.inputs[i].outpoint.index == null) return false;
-      // Ensure valid index value
-      if (obj.inputs[i].outpoint.index < 0) return false;
-
-      // Ensure pubkey and value keys exist
-      if (obj.outputs[i].pubkey == null || obj.outputs[i].value) return false;
-
-      // Ensure valid output public key
-      var alphanum = /^[a-z0-9]+$/i
-      if (!alphanum.test(obj.outputs[i].pubkey) || obj.outputs[i].pubkey.length != 64) return false;
-
-      // Ensure valid output value
-      if (obj.outputs[i].value < 0) return false;
+    // Check signature validity
+    let message = canonicalize(unSignedTX)
+    if(batchSigVerifier(message,pubkeyArray,sigArray)){
+      return true;
+    }else{
+      this._fatalError(errors.INVALID_TX_SIGNATURE);
+      return false;
     }
 
-    return true;
   }
+
+  // Removed because this step is handled in formatChecker with zod.
+  // private _isValidFormatTX(obj: any): boolean {
+  //   if (obj.inputs == null || obj.outputs == null) return false;
+
+  //   for (let i = 0; i < obj.inputs.length; i++) {
+  //     if (obj.inputs[i].outpoint == null || obj.inputs[i].sig == null) return false;
+  //     if (obj.inputs[i].sig.length != 128) return false;
+  //     if (obj.inputs[i].outpoint.txid == null || obj.inputs[i].outpoint.index == null) return false;
+  //     // Ensure valid index value
+  //     if (obj.inputs[i].outpoint.index < 0) return false;
+
+  //     // Ensure pubkey and value keys exist
+  //     if (obj.outputs[i].pubkey == null || obj.outputs[i].value) return false;
+
+  //     // Ensure valid output public key
+  //     var alphanum = /^[a-z0-9]+$/i
+  //     if (!alphanum.test(obj.outputs[i].pubkey) || obj.outputs[i].pubkey.length != 64) return false;
+
+  //     // Ensure valid output value
+  //     if (obj.outputs[i].value < 0) return false;
+  //   }
+
+  //   return true;
+  // }
 
   // _handshakeHandler handles the handshake phase of the protocol.
   // It takes a HelloJSON object and checks if the version starts with
