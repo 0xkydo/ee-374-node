@@ -9,9 +9,9 @@ export default function formatChecker(obj: any): [boolean, any] {
 
   switch (obj.type) {
     case 'transaction':
-        return [false, errors.INVALID_FORMAT]
+      return [false, errors.INVALID_FORMAT]
     case 'block':
-        return [false, errors.INVALID_FORMAT]
+      return [false, errors.INVALID_FORMAT]
     case 'hello':
       if (obj.version.slice(0, -1) === "0.9.") {
         return [true, null];
@@ -50,6 +50,15 @@ export default function formatChecker(obj: any): [boolean, any] {
         return [false, errors.INVALID_FORMAT];
       }
       break;
+    case 'getobject':
+      var getObjStatus = getObject.safeParse(obj);
+      if(getObjStatus.success){
+
+      }else{
+        return [false,errors.INVALID_FORMAT];
+      }
+      break
+
     case 'object':
       if (obj.object.type == 'transaction') {
         let transactionStatus = transaction.safeParse(obj.object);
@@ -103,7 +112,7 @@ const output = z.object({
 
 const outPoint = z.object({
   txid: hash,
-  index: z.number().int().positive()
+  index: z.number().int().nonnegative()
 })
 
 const input = z.object({
@@ -119,7 +128,7 @@ const transactionNonCoinbase = z.object({
 
 const transactionCoinbase = z.object({
   type: z.literal('transaction'),
-  height: z.number().int().positive(),
+  height: z.number().int().nonnegative(),
   outputs: z.array(output).length(1)
 })
 
@@ -128,7 +137,7 @@ const block = z.object({
   txids: z.array(hash),
   nonce: z.string().length(64),
   previd: z.string().length(64),
-  created: z.number().int().positive(),
+  created: z.number().int().nonnegative(),
   T: z.string()
 })
 
@@ -142,6 +151,11 @@ export const transaction = z.union([transactionNonCoinbase, transactionCoinbase]
 
 const iHaveObject = z.object({
   type: z.literal('ihaveobject'),
+  objectid: hash
+})
+
+const getObject = z.object({
+  type: z.literal('getobject'),
   objectid: hash
 })
 

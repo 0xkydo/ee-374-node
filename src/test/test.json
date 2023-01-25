@@ -8,16 +8,37 @@
     "objectid": "50ea3c25f0ff801730b5795e2a90721b215b62a78f492da4b0be916cd3c375c8"
   },
   "object": {
-    "type": "object",
     "object": {
-      "height": 2,
+      "height": 0,
       "outputs": [
         {
-          "pubkey": "958f8add086cc348e229a3b6590c71b7d7754e42134a127a50648bf07969d9a0",
+          "pubkey": "7f398ac43eeba5e0eed701ddcca925acdfd341926d3f91ac9a60249e359b87a3",
           "value": 50000000000
         }
       ],
       "type": "transaction"
-    }
+    },
+    "type": "object"
+  },
+  "objectNC": {
+    "object": {
+      "inputs": [
+        {
+          "outpoint": {
+            "index": 0,
+            "txid": "2e271d02475bd9ae600b33ad3273edbd6ce0efc043db6c77f914a8401652c7e8"
+          },
+          "sig": "5cd350027b1d5434047257c61e6c55e939b4062ef5fb9eb4e117d777059648b8af0d4d947edf256721faf05807c5799b35f0592a4a46f8288151a98887c7b50a"
+        }
+      ],
+      "outputs": [
+        {
+          "pubkey": "7f398ac43eeba5e0eed701ddcca925acdfd341926d3f91ac9a60249e359b87a3",
+          "value": 10
+        }
+      ],
+      "type": "transaction"
+    },
+    "type": "object"
   }
 }

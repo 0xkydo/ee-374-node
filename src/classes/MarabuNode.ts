@@ -1,8 +1,11 @@
 import level from 'level-ts';
 import net from 'net';
-import { CustomSocket } from './CustomSocket';
 
+
+import { CustomSocket } from './CustomSocket'
 import { DATABASE_PATH } from '../constants'
+
+import ihaveobject from '../FIXED_MESSAGES/ihaveobject.json'
 
 
 export class MarabuNode {
@@ -64,15 +67,15 @@ export class MarabuNode {
 
   // Broadcast data to other nodes.
   async broadcast(id: string, sender: CustomSocket) {
-    // Fetch data
-    var object = await this._db.get(id);
+    // Construct ihaveobject message
+    var broadcastedJSON = ihaveobject;
+    broadcastedJSON.objectid=id;
 
     this.connections.forEach((socket) => {
       // Do not send to the node who send the object.
       if (socket === sender) return;
-
       // Send to other nodes.
-      socket.write(object);
+      socket.write(broadcastedJSON);
       
     });
   }

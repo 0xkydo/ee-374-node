@@ -20,7 +20,7 @@ export function blake2s(data: string): string{
   
 }
 
-export function batchSigVerifier(message: string, pubkeyArray: string[], sigArray: string[]): boolean{
+export function batchSigVerifier(message: string | Uint8Array, pubkeyArray: string[], sigArray: string[]): boolean{
 
   // Iterate through all pk-sig pairs and check if it correctly signs the message.
   for(var i = 0; i< pubkeyArray.length;i++){

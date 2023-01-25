@@ -35,15 +35,11 @@ client.connect({ port: port, host: host }, async function () {
 
   client.write(canonicalize(hello)+'\n')
 
-  console.log(`message sent.`)
+  client.write(canonicalize(msg.object)+'\n')
 
-  client.write(canonicalize(msg.ihaveobject)+'\n');
+  await delay(5000)
 
-  await delay(1000);
-
-  console.log(canonicalize(msg.object))
-
-  client.write(canonicalize(msg.object)+'\n');
+  client.write(canonicalize(msg.objectNC)+'\n')
 
 
 });

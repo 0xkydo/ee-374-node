@@ -298,11 +298,11 @@ export class CustomSocket {
     // If object is valid.
     if (isValid) {
 
-      console.log('Checked object exist');
+      console.log('Checked object is valid');
 
       // Get objectId in blake2s and check if object exists
       let objectID = blake2s(canonicalize(obj.object));
-      await this._db.put(objectID, canonicalize(obj.object));
+      await this._db.put(objectID, obj.object);
 
       // TODO: let the node know I have a file and broadcast to all current connections.
       this._socket.emit('object', objectID);
@@ -339,7 +339,7 @@ export class CustomSocket {
     if (obj.height != null) return true;
 
     // Initiate variables for signature checking.
-    var unSignedTX = obj;
+    let unSignedTX = JSON.parse(JSON.stringify(obj));
     var pubkeyArray: string[] = [];
     var sigArray: string[] = [];
 
@@ -371,8 +371,11 @@ export class CustomSocket {
       unSignedTX.inputs[i].sig = null;
       // Store the pk for the input tx in pubkey array
       pubkeyArray.push(inputTX.outputs[index].pubkey);
+      console.log(inputTX.outputs[index].pubkey);
+
       // Store the signature for the entire message in signature array
       sigArray.push(signature);
+      console.log(signature);
 
       // Add input value from the current outpoint to totalInputAmount
       totalInputAmount += inputTX.outputs[index].value;
@@ -391,7 +394,8 @@ export class CustomSocket {
     };
 
     // Check signature validity
-    let message = canonicalize(unSignedTX)
+    let message = Buffer.from(canonicalize(unSignedTX), 'utf-8')
+
     if (batchSigVerifier(message, pubkeyArray, sigArray)) {
       return true;
     } else {
