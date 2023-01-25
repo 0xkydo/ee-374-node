@@ -2,21 +2,23 @@ import { canonicalize } from 'json-canonicalize';
 import * as net from 'net';
 import level from 'level-ts';
 import EventEmitter from 'events';
+import path from 'path';
+import fs from 'fs';
 
 // Internal
 import { setPeersHandler } from './utils/setPeersHandler'
 import formatChecker from './utils/formatChecker';
 import { blake2s, batchSigVerifier } from './utils/crypto';
+import { DATABASE_PATH } from '../constants'
 
-
-// Import interfaces for JSON objects
+// JSON Objects
 import { ErrorJSON, HelloJSON } from './interface/JsonInterface';
 import hello from "../FIXED_MESSAGES/hello.json";
 import errors from '../FIXED_MESSAGES/errors.json';
-import peers from '../peers/peers.json';
 import getpeers from '../FIXED_MESSAGES/getpeers.json'
 
-import { DATABASE_PATH } from '../constants'
+// Global Variables
+const peersPath = path.resolve(__dirname, '../peers/peers.json');
 
 export class CustomSocket {
 
@@ -231,6 +233,8 @@ export class CustomSocket {
 
   // When asked to get peer, it will return the peers.json file.
   private _getpeersHandler(obj: any) {
+
+    let peers = JSON.parse(fs.readFileSync(peersPath, 'utf8'));
     this.write(peers);
   }
 
@@ -275,10 +279,8 @@ export class CustomSocket {
 
   }
 
-  // Add Object
+  // Handle Incoming Object
   private async _objectHandler(obj: any) {
-
-    console.log('Enter _objectHandler');
 
     // Find object ID:
     var tempObj = obj.object;
@@ -395,7 +397,6 @@ export class CustomSocket {
 
     // Check signature validity
     let message = Buffer.from(canonicalize(unSignedTX), 'utf-8')
-
     if (batchSigVerifier(message, pubkeyArray, sigArray)) {
       return true;
     } else {
@@ -405,30 +406,6 @@ export class CustomSocket {
 
   }
 
-  // Removed because this step is handled in formatChecker with zod.
-  // private _isValidFormatTX(obj: any): boolean {
-  //   if (obj.inputs == null || obj.outputs == null) return false;
-
-  //   for (let i = 0; i < obj.inputs.length; i++) {
-  //     if (obj.inputs[i].outpoint == null || obj.inputs[i].sig == null) return false;
-  //     if (obj.inputs[i].sig.length != 128) return false;
-  //     if (obj.inputs[i].outpoint.txid == null || obj.inputs[i].outpoint.index == null) return false;
-  //     // Ensure valid index value
-  //     if (obj.inputs[i].outpoint.index < 0) return false;
-
-  //     // Ensure pubkey and value keys exist
-  //     if (obj.outputs[i].pubkey == null || obj.outputs[i].value) return false;
-
-  //     // Ensure valid output public key
-  //     var alphanum = /^[a-z0-9]+$/i
-  //     if (!alphanum.test(obj.outputs[i].pubkey) || obj.outputs[i].pubkey.length != 64) return false;
-
-  //     // Ensure valid output value
-  //     if (obj.outputs[i].value < 0) return false;
-  //   }
-
-  //   return true;
-  // }
 
   // _handshakeHandler handles the handshake phase of the protocol.
   // It takes a HelloJSON object and checks if the version starts with

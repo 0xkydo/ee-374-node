@@ -107,7 +107,7 @@ const pubkey = z.string().length(64).regex(new RegExp('^[a-z0-9]+$'));
 
 const output = z.object({
   pubkey: pubkey,
-  value: z.number()
+  value: z.number().int().nonnegative()
 })
 
 const outPoint = z.object({
@@ -143,12 +143,6 @@ const block = z.object({
 
 export const transaction = z.union([transactionNonCoinbase, transactionCoinbase])
 
-// const objectValue = z.discriminatedUnion("type", [
-//   transaction,
-//   block
-// ])
-
-
 const iHaveObject = z.object({
   type: z.literal('ihaveobject'),
   objectid: hash
@@ -158,12 +152,6 @@ const getObject = z.object({
   type: z.literal('getobject'),
   objectid: hash
 })
-
-// const object = z.object({
-//   type: z.literal('object'),
-//   object: objectValue
-// })
-
 
 type Transaction = z.infer<typeof transaction>;
 type IHaveObject = z.infer<typeof iHaveObject>;

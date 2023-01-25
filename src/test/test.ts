@@ -19,27 +19,24 @@ const host = local;
 
 // Create a new TCP client.
 const client = new Net.Socket();
-const startTime = Date.now();
-
-var status = transaction.safeParse(msg.object.object)
-
-if(!status.success){
-  console.log(status.error.format())
-}
-
 
 // Send a connection request to the server.
 client.connect({ port: port, host: host }, async function () {
   // If there is no error, the server has accepted the request and created a new 
   // socket dedicated to us.
 
-  client.write(canonicalize(hello)+'\n')
+  client.write(canonicalize(hello)+'\n');
 
-  client.write(canonicalize(msg.object)+'\n')
+  // client.write(canonicalize(msg.object1)+'\n');
 
-  await delay(5000)
+  // await delay(5000);
 
-  client.write(canonicalize(msg.objectNC)+'\n')
+  // client.write(canonicalize(msg.object2)+'\n');
+
+  // await delay(5000);
+
+  client.write(canonicalize({"objectid":"7859f10b11ad5d41bf6105ee861596f28a0521c34eb23388adb6604c0919c6e8","type":"getobject"}
+  )+'\n');
 
 
 });
