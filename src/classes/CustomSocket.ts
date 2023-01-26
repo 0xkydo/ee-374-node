@@ -303,7 +303,7 @@ export class CustomSocket {
       let objectID = blake2s(canonicalize(obj.object));
       await this._db.put(objectID, obj.object);
 
-      // TODO: let the node know I have a file and broadcast to all current connections.
+      // Let the node know I have a file and broadcast to all current connections.
       this._socket.emit('object', objectID);
       console.log(`STAT | ${this.remoteAddress} | Received and stored valid object ${objectID}`);
 
