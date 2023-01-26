@@ -1,10 +1,8 @@
 import level from 'level-ts';
 import net from 'net';
 
-
 import { CustomSocket } from './CustomSocket'
 import { DATABASE_PATH } from '../constants'
-
 import ihaveobject from '../FIXED_MESSAGES/ihaveobject.json'
 
 
@@ -70,6 +68,8 @@ export class MarabuNode {
     // Construct ihaveobject message
     var broadcastedJSON = ihaveobject;
     broadcastedJSON.objectid=id;
+
+    console.log(`NODE | Broadcasting object | ${id}`);
 
     this.connections.forEach((socket) => {
       // Do not send to the node who send the object.

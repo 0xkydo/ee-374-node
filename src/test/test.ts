@@ -35,8 +35,7 @@ client.connect({ port: port, host: host }, async function () {
 
   // await delay(5000);
 
-  client.write(canonicalize({"objectid":"7859f10b11ad5d41bf6105ee861596f28a0521c34eb23388adb6604c0919c6e8","type":"getobject"}
-  )+'\n');
+  client.write(canonicalize(msg.object8)+'\n');
 
 
 });

@@ -62,7 +62,6 @@ export default function formatChecker(obj: any): [boolean, any] {
     case 'object':
       if (obj.object.type == 'transaction') {
         let transactionStatus = transaction.safeParse(obj.object);
-        console.log(transactionStatus.success);
 
         if (transactionStatus.success) {
 

@@ -290,17 +290,14 @@ export class CustomSocket {
     let isThere = await this._db.exists(objectID);
     if (isThere) {
       // File exists and do nothing.
+      console.log(`STAT | ${this.remoteAddress} | Object already exists ${objectID}`);
       return;
     }
-
-    console.log('Checked file exist');
 
     // Check object validity
     let isValid = await this._isValidObject(obj.object)
     // If object is valid.
     if (isValid) {
-
-      console.log('Checked object is valid');
 
       // Get objectId in blake2s and check if object exists
       let objectID = blake2s(canonicalize(obj.object));
@@ -308,7 +305,7 @@ export class CustomSocket {
 
       // TODO: let the node know I have a file and broadcast to all current connections.
       this._socket.emit('object', objectID);
-      console.log('Broadcast signal emitted');
+      console.log(`STAT | ${this.remoteAddress} | Received and stored valid object ${objectID}`);
 
     }
   }
@@ -373,11 +370,9 @@ export class CustomSocket {
       unSignedTX.inputs[i].sig = null;
       // Store the pk for the input tx in pubkey array
       pubkeyArray.push(inputTX.outputs[index].pubkey);
-      console.log(inputTX.outputs[index].pubkey);
 
       // Store the signature for the entire message in signature array
       sigArray.push(signature);
-      console.log(signature);
 
       // Add input value from the current outpoint to totalInputAmount
       totalInputAmount += inputTX.outputs[index].value;
@@ -422,8 +417,7 @@ export class CustomSocket {
   // Handles all non-fatal error messaging. However, if total error surpasses 50, the node will be force disconnected.
   private _nonFatalError(error: ErrorJSON) {
     this.write(error);
-    console.log(`NERR | ${this.remoteAddress} | ${error.type}`)
-    console.log(error.message)
+    console.log(`NERR | ${this.remoteAddress} | ${error.name}`)
     this.errorCounter++;
     if (this.errorCounter > this.MAX_ERROR_COUNTS) {
       this._socket.destroy();
