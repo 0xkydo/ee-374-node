@@ -4,8 +4,9 @@ import { canonicalize } from "json-canonicalize";
 
 import errors from '../FIXED_MESSAGES/errors.json';
 import hello from "../FIXED_MESSAGES/hello_test.json";
-import peers from '../peers/peers_test.json';
+import {transaction} from '../classes/utils/formatChecker'
 import delay from "delay";
+import msg from './test.json'
 
 const nodeAddy = '54.67.110.108';
 const monitorAddy = '52.53.175.221';
@@ -19,7 +20,6 @@ const host = ryanAddy;
 
 // Create a new TCP client.
 const client = new Net.Socket();
-const startTime = Date.now();
 
 
 
@@ -27,8 +27,7 @@ const startTime = Date.now();
 client.connect({ port: port, host: host }, async function () {
   // If there is no error, the server has accepted the request and created a new 
   // socket dedicated to us.
-  console.log('TCP connection established with the server.');
-
+  
   // client.write(`{ "type": "dsdafsdfsf" }\n`)
   client.write(canonicalize(hello)+`\n`)
   client.write(`{ "type": "getpeers"}\n`);
@@ -50,12 +49,13 @@ client.connect({ port: port, host: host }, async function () {
 
   // client.write(canonicalize(peers)+`\n`);
 
+  // await delay(5000);
 
+  // client.write(canonicalize(msg.object2)+'\n');
 
-  // The client can now send data to the server by writing to its socket.
-  console.log(`message sent.`)
-  // client.write('\n');
-  // client.write(canonicalize({ "type": "getpeers" }) + '\n');
+  // await delay(5000);
+
+  client.write(canonicalize(msg.object8)+'\n');
 
 
 });

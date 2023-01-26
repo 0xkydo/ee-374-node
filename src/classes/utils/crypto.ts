@@ -1,3 +1,4 @@
+
 import blake2 from 'blake2';
 
 // @notice input is string only.
@@ -11,7 +12,3 @@ export default function blake2s(data: string): string{
   return hash.digest('hex');
   
 }
-
-
-
-
