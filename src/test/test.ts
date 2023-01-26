@@ -4,8 +4,9 @@ import { canonicalize } from "json-canonicalize";
 
 import errors from '../FIXED_MESSAGES/errors.json';
 import hello from "../FIXED_MESSAGES/hello_test.json";
-import peers from '../peers/peers_test.json';
+import {transaction} from '../classes/utils/formatChecker'
 import delay from "delay";
+import msg from './test.json'
 
 const nodeAddy = '54.67.110.108';
 const monitorAddy = '52.53.175.221';
@@ -14,30 +15,27 @@ const test = '45.63.89.228';
 
 // The port number and hostname of the server.
 const port = 18018;
-const host = test;
+const host = local;
 
 // Create a new TCP client.
 const client = new Net.Socket();
-const startTime = Date.now();
 
 // Send a connection request to the server.
 client.connect({ port: port, host: host }, async function () {
   // If there is no error, the server has accepted the request and created a new 
   // socket dedicated to us.
-  console.log('TCP connection established with the server.');
 
-  const endTime = Date.now();
-  // Calculate the latency
-  const latency = endTime - startTime;
-  console.log(`Latency: ${latency}ms`);
-  client.write(canonicalize(hello))
+  client.write(canonicalize(hello)+'\n');
 
-  client.write('\n' + canonicalize({ "type": "getpeers" }) + '\n');
+  // client.write(canonicalize(msg.object1)+'\n');
 
-  // The client can now send data to the server by writing to its socket.
-  console.log(`message sent.`)
-  // client.write('\n');
-  // client.write(canonicalize({ "type": "getpeers" }) + '\n');
+  // await delay(5000);
+
+  // client.write(canonicalize(msg.object2)+'\n');
+
+  // await delay(5000);
+
+  client.write(canonicalize(msg.object8)+'\n');
 
 
 });

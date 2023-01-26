@@ -1,21 +1,35 @@
 import { canonicalize } from 'json-canonicalize';
+import * as net from 'net';
+import level from 'level-ts';
+import EventEmitter from 'events';
+import path from 'path';
+import fs from 'fs';
+
+// Internal
 import { setPeersHandler } from './utils/setPeersHandler'
 import formatChecker from './utils/formatChecker';
-import * as net from 'net';
+import { blake2s, batchSigVerifier } from './utils/crypto';
+import { DATABASE_PATH } from '../constants'
 
-// Import interfaces for JSON objects
+// JSON Objects
 import { ErrorJSON, HelloJSON } from './interface/JsonInterface';
 import hello from "../FIXED_MESSAGES/hello.json";
 import errors from '../FIXED_MESSAGES/errors.json';
-import peers from '../peers/peers.json';
 import getpeers from '../FIXED_MESSAGES/getpeers.json'
 
-
+// Global Variables
+const peersPath = path.resolve(__dirname, '../peers/peers.json');
 
 export class CustomSocket {
 
   // Socket
   private _socket: net.Socket;
+
+  // Database
+  private _db = new level(DATABASE_PATH);
+
+  // Event Emitter
+  private _emitter = new EventEmitter();
 
   // Constants
   MAX_BUFFER_SIZE: number = 1 * 1000000;
@@ -46,6 +60,11 @@ export class CustomSocket {
     // Store remoteAddress in peer format.
     this.remoteAddress = `${socket.remoteAddress}:${socket.remotePort}`;
 
+    // Set socket.on functions
+    this._socket.on('data', (data) => { this._dataHandler(data) });
+    this._socket.on('timeout', () => { this._timeoutHandler() });
+
+
     console.log(`CONN | ${this.remoteAddress} | CustomSocket class wrapped`);
 
     // Start handshake process.
@@ -59,24 +78,20 @@ export class CustomSocket {
   // it will write an internal error message.
   write(data: object): boolean {
 
+    // If socket is destroyed, do not write and return false.
+    if (this._socket.destroyed) {
+      return false;
+    }
+
     try {
       // Canonicalize data object
       let jsonCanon: string = canonicalize(data);
-      // If socket is destroyed, do not write.
-      if (this._socket.destroyed) {
-        return false;
-      } else {
-        console.log(`SENT | ${this.remoteAddress} | ${jsonCanon} `)
-        return this._socket.write(jsonCanon + '\n');
-      }
+      console.log(`SENT | ${this.remoteAddress} | ${jsonCanon} `)
+      return this._socket.write(jsonCanon + '\n');
     } catch (error) {
       console.error(error);
-      if (this._socket.destroyed) {
-        return false;
-      } else {
-        console.log(`NERR | ${this.remoteAddress} | ${canonicalize(errors.INTERNAL_ERROR)}`);
-        return this._socket.write(canonicalize(errors.INTERNAL_ERROR) + '\n');
-      }
+      console.log(`NERR | ${this.remoteAddress} | ${canonicalize(errors.INTERNAL_ERROR)}`);
+      return this._socket.write(canonicalize(errors.INTERNAL_ERROR) + '\n');
     }
   }
 
@@ -91,13 +106,14 @@ export class CustomSocket {
   on(event: 'lookup', listener: (err: Error, address: string, family: string | number, host: string) => void): void;
   on(event: 'ready', listener: () => void): void;
   on(event: 'timeout', listener: () => void): void;
+  on(event: 'object', listener: (data: string) => void): void;
   on(event: string, listener: (...args: any[]) => void) {
     switch (event) {
       case 'data':
-        this._socket.on('data', (data) => { this._dataHandler(data) })
+        this._socket.on('data', (data) => { listener(data) })
         break;
       case 'timeout':
-        this._socket.on('timeout', () => { this._timeoutHandler() });
+        this._socket.on('timeout', () => { listener() });
       default:
         this._socket.on(event, listener);
         break;
@@ -158,7 +174,7 @@ export class CustomSocket {
   // _formatChecker checks if the message it received is the correct
   // JSON format, if it is not, it will either end the connection if
   // handshake is not completed or send an invalid format message. If
-  // it can be parsed to JSON in correct format, the object is passed 
+  // it can be parsed to JSON in correct format, the object is passed
   // to the _objRouter for next steps.
   private _messageToJSON(message: string) {
     console.log(`RECE | ${this.remoteAddress} | ${message}`);
@@ -166,8 +182,7 @@ export class CustomSocket {
       // Parse string into JSON object.
       this.obj = JSON.parse(message);
 
-      var isCorrectFormat = formatChecker(this.obj)[0];
-      var errorMessage = formatChecker(this.obj)[1];
+      var [isCorrectFormat, errorMessage] = formatChecker(this.obj);
 
       // Check if the format is correct
       if (isCorrectFormat) {
@@ -194,6 +209,15 @@ export class CustomSocket {
         case "peers":
           setPeersHandler(obj);
           break;
+        case "getobject":
+          this._sendObject(obj);
+          break;
+        case "ihaveobject":
+          this._requestObject(obj);
+          break;
+        case "object":
+          this._objectHandler(obj);
+          break;
         default:
           break;
       }
@@ -209,8 +233,174 @@ export class CustomSocket {
 
   // When asked to get peer, it will return the peers.json file.
   private _getpeersHandler(obj: any) {
+
+    let peers = JSON.parse(fs.readFileSync(peersPath, 'utf8'));
     this.write(peers);
   }
+
+  // Send Object
+  private _sendObject(obj: any) {
+    // Check if requested object exists in file.
+    this._db.exists(obj.objectid).then((exists) => {
+
+      if (exists) {
+
+        this._db.get(obj.objectid).then((temp) => {
+
+          // Construct the Object JSON file.
+          let tempObject = { "type": "object", "object": null };
+          tempObject.type = 'object';
+          tempObject.object = temp;
+
+          // Send over the object.
+          this.write(tempObject);
+        })
+
+      } else {
+        // Requested file does not exist, write back error message.
+        this.write(errors.UNKNOWN_OBJECT);
+      }
+    })
+  }
+
+  // Request Object
+  private _requestObject(obj: any) {
+
+    // Check if this object already exist in file.
+    this._db.exists(obj.objectid).then((exists) => {
+      if (exists) {
+        // If the object already exists in file, no nothing
+        console.log(`STAT | ${obj.objectid} | Object exists in file`)
+      } else {
+        // If the file does not exist, request object.
+        this.write({ "type": "getobject", "objectid": obj.objectid });
+      }
+    })
+
+  }
+
+  // Handle Incoming Object
+  private async _objectHandler(obj: any) {
+
+    // Find object ID:
+    var tempObj = obj.object;
+    var objectID = blake2s(canonicalize(tempObj));
+
+    // Check if object is already in database.
+    let isThere = await this._db.exists(objectID);
+    if (isThere) {
+      // File exists and do nothing.
+      console.log(`STAT | ${this.remoteAddress} | Object already exists ${objectID}`);
+      return;
+    }
+
+    // Check object validity
+    let isValid = await this._isValidObject(obj.object)
+    // If object is valid.
+    if (isValid) {
+
+      // Get objectId in blake2s and check if object exists
+      let objectID = blake2s(canonicalize(obj.object));
+      await this._db.put(objectID, obj.object);
+
+      // Let the node know I have a file and broadcast to all current connections.
+      this._socket.emit('object', objectID);
+      console.log(`STAT | ${this.remoteAddress} | Received and stored valid object ${objectID}`);
+
+    }
+  }
+
+  // Transaction Validation Logic
+  private async _isValidObject(obj: any): Promise<boolean> {
+
+    // I think we can remove all this because I check the format of the object within the formatCheckers
+    // if (!this._isValidFormatTX(obj)) {
+    //   this._fatalError(errors.INVALID_FORMAT);
+    //   return false;
+    // }
+
+    // Separate logic for transaction and block.
+    if (obj.type == 'transaction') {
+      return await this._transactionValidation(obj)
+
+    } else {
+      return await this._blockValidation(obj);
+    }
+
+  }
+  private _blockValidation(obj: any): boolean {
+    return true;
+  }
+
+  private async _transactionValidation(obj: any): Promise<boolean> {
+
+    // Coinbase transaction
+    if (obj.height != null) return true;
+
+    // Initiate variables for signature checking.
+    let unSignedTX = JSON.parse(JSON.stringify(obj));
+    var pubkeyArray: string[] = [];
+    var sigArray: string[] = [];
+
+    // Initiate variables for checking law of conservation.
+    var totalInputAmount = 0;
+    var totalOutputAmount = 0;
+    var outputLen = obj.outputs.length;
+
+    for (let i = 0; i < obj.inputs.length; i++) {
+      // Ensure that a valid transaction with the given txid exists in your object database
+      let txid = obj.inputs[i].outpoint.txid;
+      let index = obj.inputs[i].outpoint.index;
+      let signature = obj.inputs[i].sig;
+
+      if (await this._db.exists(txid)) {
+        var inputTX = await this._db.get(txid);
+      } else {
+        this._fatalError(errors.UNKNOWN_OBJECT);
+        return false;
+      }
+
+      // Ensure that given index is less than the number of outputs in the outpoint transaction
+      if (index >= inputTX.outputs.length) {
+        this._fatalError(errors.INVALID_TX_OUTPOINT);
+        return false;
+      };
+
+      // Remove current signature in unsigned tx
+      unSignedTX.inputs[i].sig = null;
+      // Store the pk for the input tx in pubkey array
+      pubkeyArray.push(inputTX.outputs[index].pubkey);
+
+      // Store the signature for the entire message in signature array
+      sigArray.push(signature);
+
+      // Add input value from the current outpoint to totalInputAmount
+      totalInputAmount += inputTX.outputs[index].value;
+
+    }
+
+    // Calculate totalOutputAmount by iterating all value's in obj.outputs
+    for (let i = 0; i < outputLen; i++) {
+      totalOutputAmount += obj.outputs[i].value;
+    }
+
+    // Check for law of conservation
+    if (totalInputAmount < totalOutputAmount) {
+      this._fatalError(errors.INVALID_TX_CONSERVATION);
+      return false;
+    };
+
+    // Check signature validity
+    let message = Buffer.from(canonicalize(unSignedTX), 'utf-8')
+    if (batchSigVerifier(message, pubkeyArray, sigArray)) {
+      return true;
+    } else {
+      this._fatalError(errors.INVALID_TX_SIGNATURE);
+      return false;
+    }
+
+  }
+
 
   // _handshakeHandler handles the handshake phase of the protocol.
   // It takes a HelloJSON object and checks if the version starts with
@@ -227,8 +417,7 @@ export class CustomSocket {
   // Handles all non-fatal error messaging. However, if total error surpasses 50, the node will be force disconnected.
   private _nonFatalError(error: ErrorJSON) {
     this.write(error);
-    console.log(`NERR | ${this.remoteAddress} | ${error.type}`)
-    console.log(error.message)
+    console.log(`NERR | ${this.remoteAddress} | ${error.name}`)
     this.errorCounter++;
     if (this.errorCounter > this.MAX_ERROR_COUNTS) {
       this._socket.destroy();

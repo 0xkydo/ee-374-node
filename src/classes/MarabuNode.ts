@@ -1,26 +1,34 @@
-import Net from 'net';
-import { CustomSocket } from './CustomSocket';
+import level from 'level-ts';
+import net from 'net';
+
+import { CustomSocket } from './CustomSocket'
+import { DATABASE_PATH } from '../constants'
+import ihaveobject from '../FIXED_MESSAGES/ihaveobject.json'
+
 
 export class MarabuNode {
 
-  private _server: Net.Server;
+  private _server: net.Server;
+  private _db = new level(DATABASE_PATH);
 
   connections: CustomSocket[] = [];
 
   // Constructor initiate the node. It establishes the server, wrap and push 
   // the socket to the node class for record keeping.
   constructor(PORT: number) {
-    this._server = Net.createServer((_socket) => {
+    this._server = net.createServer((_socket) => {
       let socket = new CustomSocket(_socket);
       this.connections.push(socket);
       console.log(`NODE | TOTAL CONNECTION | ${this.connections.length}`);
-      socket.on('data', (data) => { });
-      socket.on('timeout', () => { });
       socket.on('close', () => {
         console.log(`NODE | REMOVED SOCKET | ${socket.remoteAddress}`);
         this.connections = this.connections.filter((_socket) => _socket !== socket);
         console.log(`NODE | TOTAL CONNECTION | ${this.connections.length}`);
       });
+      // When receiving a new object, broadcast to all current connections.
+      socket.on('object', async (objectID)=>{
+        await this.broadcast(objectID,socket);
+      })
     })
     this._server.listen(PORT, '0.0.0.0', () => {
       console.log(`NODE | START | Listening at port: ${PORT}`);
@@ -35,7 +43,7 @@ export class MarabuNode {
   connectToNode(ip: string, port: number) {
     
     // Establish connection.
-    const _socket = Net.createConnection({
+    const _socket = net.createConnection({
       port: port,
       host: ip
     });
@@ -45,20 +53,30 @@ export class MarabuNode {
       let socket = new CustomSocket(_socket);
       this.connections.push(socket);
       console.log(`NODE | TOTAL CONNECTION | ${this.connections.length}`);
-      socket.on('data', (data) => { });
-      socket.on('timeout', () => { });
       socket.on("close", () => {
         console.log(`NODE | REMOVED SOCKET | ${socket.remoteAddress}`);
         this.connections = this.connections.filter((_socket) => _socket !== socket);
       });
+      socket.on('object', async (objectID)=>{
+        await this.broadcast(objectID,socket);
+      })
     });
   }
 
   // Broadcast data to other nodes.
-  broadcast(data: any, sender: CustomSocket) {
+  async broadcast(id: string, sender: CustomSocket) {
+    // Construct ihaveobject message
+    var broadcastedJSON = ihaveobject;
+    broadcastedJSON.objectid=id;
+
+    console.log(`NODE | Broadcasting object | ${id}`);
+
     this.connections.forEach((socket) => {
+      // Do not send to the node who send the object.
       if (socket === sender) return;
-      socket.write(data);
+      // Send to other nodes.
+      socket.write(broadcastedJSON);
+      
     });
   }
 
