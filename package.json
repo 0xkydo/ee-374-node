@@ -23,8 +23,10 @@
   "dependencies": {
     "@noble/ed25519": "^1.7.1",
     "@noble/hashes": "^1.1.5",
+    "@sendgrid/mail": "^7.7.0",
     "blake2": "^4.1.1",
     "delay": "^5.0.0",
+    "dotenv": "^16.0.3",
     "is-valid-domain": "^0.1.6",
     "json-canonicalize": "^1.0.4",
     "level-ts": "^2.1.0",
