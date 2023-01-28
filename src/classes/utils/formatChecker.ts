@@ -51,27 +51,35 @@ export default function formatChecker(obj: any): [boolean, any] {
       break;
     case 'getobject':
       var getObjStatus = getObject.safeParse(obj);
-      if(getObjStatus.success){
+      if (getObjStatus.success) {
 
-      }else{
-        return [false,errors.INVALID_FORMAT];
+      } else {
+        return [false, errors.INVALID_FORMAT];
       }
       break
 
     case 'object':
+      // Check if the the object is a transaction or a block.
       if (obj.object.type == 'transaction') {
+
+        // Check transaction format.
         let transactionStatus = transaction.safeParse(obj.object);
 
         if (transactionStatus.success) {
+
+          return [true, null];
 
         } else {
           return [false, errors.INVALID_FORMAT]
         }
       } else {
+
+        // Check block format.
         let blockStatus = block.safeParse(obj.object);
 
-
         if (blockStatus.success) {
+
+          return [true, null];
 
         } else {
 
@@ -121,13 +129,13 @@ const input = z.object({
   sig: signature
 })
 
-const transactionNonCoinbase = z.object({
+export const transactionNonCoinbase = z.object({
   type: z.literal('transaction'),
   inputs: z.array(input),
   outputs: z.array(output)
 })
 
-const transactionCoinbase = z.object({
+export const transactionCoinbase = z.object({
   type: z.literal('transaction'),
   height: z.number().int().nonnegative(),
   outputs: z.array(output).length(1)
@@ -141,7 +149,7 @@ const block = z.object({
   nonce: hash,
   previd: hash,
   created: z.number().int().nonnegative(),
-  T: z.literal('003a000000000000000000000000000000000000000000000000000000000000'),
+  T: z.literal('00000000abc00000000000000000000000000000000000000000000000000000'),
   miner: genericText.optional(),
   note: genericText.optional(),
   studentids: z.array(genericText).max(10).optional()

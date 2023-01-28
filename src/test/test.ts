@@ -2,8 +2,9 @@
 import Net from 'net';
 import { canonicalize } from "json-canonicalize";
 
+import { blake2s } from '../classes/utils/crypto';
 import errors from '../FIXED_MESSAGES/errors.json';
-import hello from "../FIXED_MESSAGES/hello_test.json";
+import hello from "./hello_test.json";
 import {transaction} from '../classes/utils/formatChecker'
 import delay from "delay";
 import msg from './test.json'
@@ -19,6 +20,19 @@ const host = local;
 
 // Create a new TCP client.
 const client = new Net.Socket();
+
+const block = {
+  "T": "00000000abc00000000000000000000000000000000000000000000000000000",
+  "created": 1671148800,
+  "miner": "Marabu Bounty Hunter",
+  "nonce": "15551b5116783ace79cf19d95cca707a94f48e4cc69f3db32f41081dab3e6641",
+  "note": "First block on genesis, 50 bu reward",
+  "previd": "0000000052a0e645eca917ae1c196e0d0a4fb756747f29ef52594d68484bb5e2",
+  "txids": ["8265faf623dfbcb17528fcd2e67fdf78de791ed4c7c60480e8cd21c6cdc8bcd4"],
+  "type": "block"
+}
+
+console.log(canonicalize(block));
 
 // Send a connection request to the server.
 client.connect({ port: port, host: host }, async function () {

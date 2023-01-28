@@ -7,7 +7,7 @@ import fs from 'fs';
 
 // Internal
 import { setPeersHandler } from './utils/setPeersHandler'
-import formatChecker from './utils/formatChecker';
+import formatChecker, {transactionCoinbase,transactionNonCoinbase,transaction} from './utils/formatChecker';
 import { blake2s, batchSigVerifier } from './utils/crypto';
 import { DATABASE_PATH } from '../constants'
 
@@ -106,7 +106,8 @@ export class CustomSocket {
   on(event: 'lookup', listener: (err: Error, address: string, family: string | number, host: string) => void): void;
   on(event: 'ready', listener: () => void): void;
   on(event: 'timeout', listener: () => void): void;
-  on(event: 'object', listener: (data: string) => void): void;
+  on(event: 'ihaveobject', listener: (data: string) => void): void;
+  on(event: 'getobject', listener: (data: string) => void): void;
   on(event: string, listener: (...args: any[]) => void) {
     switch (event) {
       case 'data':
@@ -210,10 +211,10 @@ export class CustomSocket {
           setPeersHandler(obj);
           break;
         case "getobject":
-          this._sendObject(obj);
+          this._sendObjectHandler(obj);
           break;
         case "ihaveobject":
-          this._requestObject(obj);
+          this._requestObjectHandler(obj);
           break;
         case "object":
           this._objectHandler(obj);
@@ -239,7 +240,7 @@ export class CustomSocket {
   }
 
   // Send Object
-  private _sendObject(obj: any) {
+  private _sendObjectHandler(obj: any) {
     // Check if requested object exists in file.
     this._db.exists(obj.objectid).then((exists) => {
 
@@ -264,7 +265,7 @@ export class CustomSocket {
   }
 
   // Request Object
-  private _requestObject(obj: any) {
+  private _requestObjectHandler(obj: any) {
 
     // Check if this object already exist in file.
     this._db.exists(obj.objectid).then((exists) => {
@@ -304,20 +305,14 @@ export class CustomSocket {
       await this._db.put(objectID, obj.object);
 
       // Let the node know I have a file and broadcast to all current connections.
-      this._socket.emit('object', objectID);
+      this._socket.emit('ihaveobject', objectID);
       console.log(`STAT | ${this.remoteAddress} | Received and stored valid object ${objectID}`);
 
     }
   }
 
-  // Transaction Validation Logic
+  // Object Validation Logic
   private async _isValidObject(obj: any): Promise<boolean> {
-
-    // I think we can remove all this because I check the format of the object within the formatCheckers
-    // if (!this._isValidFormatTX(obj)) {
-    //   this._fatalError(errors.INVALID_FORMAT);
-    //   return false;
-    // }
 
     // Separate logic for transaction and block.
     if (obj.type == 'transaction') {
@@ -328,8 +323,138 @@ export class CustomSocket {
     }
 
   }
-  private _blockValidation(obj: any): boolean {
+
+  private async _blockValidation(obj: any): Promise<boolean> {
+
+    // Check proof-of-work correctness
+
+    // Check all transactions exist
+
+    const transactionStatus = await this._blockTxValidation(obj.txids);
+
+
+
     return true;
+  }
+
+  private async _blockTxValidation(obj: any): Promise<boolean> {
+
+    var txids = obj.txids;
+    var coinbaseTx = "";
+    var totalInputAmount = 0;
+    var totalOutputAmount = 0;
+
+    for (var i = 0; i < txids.length; i++) {
+      let txid = txids[i];
+      // Check if all transaction exists
+      let isThere = await this._db.exists(txid);
+      if (!isThere) {
+        // Ask for it on the Node level.
+        this._socket.emit('getobject', txid);
+
+        // Wait two seconds and see if the object is received.
+        const isReceived = this._waitForObject(txid);
+
+        // If the object is not received, terminate connection.
+        if (!isReceived) this._fatalError(errors.UNFINDABLE_OBJECT);
+
+        return false;
+      }
+      // Retrieve the object and check if it is a valid transaction.
+      const tx = await this._db.get(txid);
+
+      // Check if it is a transaction and not a block.
+      // TODO send back the failed transaction?
+      const status = transaction.safeParse(tx);
+      if(!status.success){
+        this._fatalError(errors.INVALID_FORMAT)
+      }
+
+
+      // If it is the first index of the tx, it needs to be a coinbase transaction.
+      if(i==0){
+        // Stores coinbase transaction hash to prevent spending in current block.
+        coinbaseTx = txid;
+
+        // Check if the transaction is a coinbase transaction
+        let status = transactionCoinbase.safeParse(tx);
+        // If it is invalid, end connection and send error message.
+        if(!status.success){
+          this._fatalError(errors.INVALID_BLOCK_COINBASE);
+        }
+
+        totalOutputAmount += tx.outputs[0].value;
+
+      }else{
+        // Parse if the transaction is not a coinbase transaction
+        let status = transactionNonCoinbase.safeParse(tx);
+
+        // If it is a coinbase transaction, return false.
+        if(!status.success){
+          this._fatalError(errors.INVALID_BLOCK_COINBASE);
+        }
+
+        // Loop through transaction inputs, sum all inputs, and 
+        // return false if the coinbase TX exist.
+
+        for(var input of tx.inputs){
+          // Get the input transaction
+          // Check if the outpoint is the current coinbase
+          let txid = input.outpoint.txid
+          // If it is the coinbase transaction, terminate.
+          if(txid==coinbaseTx){
+            this._fatalError(errors.INVALID_BLOCK_COINBASE)
+          }
+
+          // Check if the tx in UTXO set.
+
+
+          // Check if the tx is not testing UTXO set.
+
+          let inputTx = await this._db.get(txid)
+          // Locate the value of the output from the input transaction
+          let inputAmt = inputTx.outputs[input.outpoint.index]
+
+          totalInputAmount += inputAmt;
+
+          // Place tx in testing UTXO set.
+        }
+
+        // Loop through transaction outputs, sum all outputs.
+
+
+      }
+
+    }
+
+    // Check if law of conservation is held in block.
+
+
+    // Remove testing UTXO set from UTXO or reset to zero.
+
+
+    return true;
+  }
+
+  // Wait for a given object to be received. If it is not received after
+  // 2 seconds of calling this function, it will return false.
+  private async _waitForObject(txid: string): Promise<boolean> {
+
+    return new Promise((resolve) => {
+      // Create a two second timeout. If no object was received, return false.
+      const timeout = setTimeout(() => {
+        resolve(false);
+      }, 2000)
+      // When the socket receives a valid object with the corresponding ID,
+      // Return true
+      this._socket.on('ihaveobject', (id) => {
+        if (id == txid) {
+          clearTimeout(timeout);
+          resolve(true);
+        }
+      })
+
+    })
   }
 
   private async _transactionValidation(obj: any): Promise<boolean> {
@@ -413,6 +538,10 @@ export class CustomSocket {
     this.handShakeCompleted = true;
     console.log(`STAT | ${this.remoteAddress} | Handshake completed.`);
   }
+
+  /*************************
+  Error Functions
+  **************************/
 
   // Handles all non-fatal error messaging. However, if total error surpasses 50, the node will be force disconnected.
   private _nonFatalError(error: ErrorJSON) {

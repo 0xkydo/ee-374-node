@@ -4,6 +4,7 @@ import net from 'net';
 import { CustomSocket } from './CustomSocket'
 import { DATABASE_PATH } from '../constants'
 import ihaveobject from '../FIXED_MESSAGES/ihaveobject.json'
+import getobject from '../FIXED_MESSAGES/getobject.json'
 
 
 export class MarabuNode {
@@ -26,8 +27,12 @@ export class MarabuNode {
         console.log(`NODE | TOTAL CONNECTION | ${this.connections.length}`);
       });
       // When receiving a new object, broadcast to all current connections.
-      socket.on('object', async (objectID)=>{
-        await this.broadcast(objectID,socket);
+      socket.on('ihaveobject', async (objectID) => {
+        await this.broadcast(objectID, ihaveobject);
+      })
+      // When need an object, ask the object from everyone.
+      socket.on('getobject', async (objectID) => {
+        await this.broadcast(objectID, getobject);
       })
     })
     this._server.listen(PORT, '0.0.0.0', () => {
@@ -41,13 +46,13 @@ export class MarabuNode {
   // numbers. This can cause the node to go offline if adversary passes in 
   // false peer data.
   connectToNode(ip: string, port: number) {
-    
+
     // Establish connection.
     const _socket = net.createConnection({
       port: port,
       host: ip
     });
-    
+
     // Define on.connection logic and initiate the CustomSocket wrapper.
     _socket.on("connect", () => {
       let socket = new CustomSocket(_socket);
@@ -57,26 +62,28 @@ export class MarabuNode {
         console.log(`NODE | REMOVED SOCKET | ${socket.remoteAddress}`);
         this.connections = this.connections.filter((_socket) => _socket !== socket);
       });
-      socket.on('object', async (objectID)=>{
-        await this.broadcast(objectID,socket);
+      // When receiving a new object, broadcast to all current connections.
+      socket.on('ihaveobject', async (objectID) => {
+        await this.broadcast(objectID, ihaveobject);
+      })
+      // When need an object, ask the object from everyone.
+      socket.on('getobject', async (objectID) => {
+        await this.broadcast(objectID, getobject);
       })
     });
   }
 
   // Broadcast data to other nodes.
-  async broadcast(id: string, sender: CustomSocket) {
+  async broadcast(id: string, json: any) {
     // Construct ihaveobject message
-    var broadcastedJSON = ihaveobject;
-    broadcastedJSON.objectid=id;
+    var broadcastedJSON = json;
+    broadcastedJSON.objectid = id;
 
-    console.log(`NODE | Broadcasting object | ${id}`);
+    console.log(`NODE | Broadcasting | ${broadcastedJSON.type} | ${id}`);
 
     this.connections.forEach((socket) => {
-      // Do not send to the node who send the object.
-      if (socket === sender) return;
       // Send to other nodes.
       socket.write(broadcastedJSON);
-      
     });
   }
 
