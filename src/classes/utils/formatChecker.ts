@@ -1,4 +1,3 @@
-import { stat } from "fs";
 import { isIP } from "net";
 import { z } from 'zod';
 const isValidDomain = require('is-valid-domain')
@@ -98,11 +97,14 @@ export default function formatChecker(obj: any): [boolean, any] {
 
 // Intermediate types
 
+// Text
 const hash = z.string().length(64).regex(new RegExp('^[a-z0-9]+$'))
 
 const signature = z.string().length(128).regex(new RegExp('^[a-z0-9]+$'));
 
 const pubkey = z.string().length(64).regex(new RegExp('^[a-z0-9]+$'));
+
+const genericText = z.string().max(128); // For student ID, note, miner inside block.
 
 const output = z.object({
   pubkey: pubkey,
@@ -131,13 +133,18 @@ const transactionCoinbase = z.object({
   outputs: z.array(output).length(1)
 })
 
+// Whole objects
+
 const block = z.object({
   type: z.literal('block'),
   txids: z.array(hash),
-  nonce: z.string().length(64),
-  previd: z.string().length(64),
+  nonce: hash,
+  previd: hash,
   created: z.number().int().nonnegative(),
-  T: z.string()
+  T: z.literal('003a000000000000000000000000000000000000000000000000000000000000'),
+  miner: genericText.optional(),
+  note: genericText.optional(),
+  studentids: z.array(genericText).max(10).optional()
 })
 
 export const transaction = z.union([transactionNonCoinbase, transactionCoinbase])
