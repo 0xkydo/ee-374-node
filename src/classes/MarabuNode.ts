@@ -1,16 +1,14 @@
 import level from 'level-ts';
 import net from 'net';
 
-import { CustomSocket } from './CustomSocket'
-import { DATABASE_PATH } from '../constants'
-import ihaveobject from '../FIXED_MESSAGES/ihaveobject.json'
-import getobject from '../FIXED_MESSAGES/getobject.json'
-
+// Import local files and lib
+import { CustomSocket } from './CustomSocket';
+import ihaveobject from '../FIXED_MESSAGES/ihaveobject.json';
+import getobject from '../FIXED_MESSAGES/getobject.json';
 
 export class MarabuNode {
 
   private _server: net.Server;
-  private _db = new level(DATABASE_PATH);
 
   connections: CustomSocket[] = [];
 

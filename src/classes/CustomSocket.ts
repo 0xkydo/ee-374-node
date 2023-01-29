@@ -7,15 +7,17 @@ import fs from 'fs';
 
 // Internal
 import { setPeersHandler } from './utils/setPeersHandler'
-import formatChecker, {transactionCoinbase,transactionNonCoinbase,transaction} from './utils/formatChecker';
+import formatChecker, { transactionCoinbase, transactionNonCoinbase, transaction } from './utils/formatChecker';
 import { blake2s, batchSigVerifier } from './utils/crypto';
-import { DATABASE_PATH } from '../constants'
+import { returnUTXO, addUTXOSet } from './utils/UTXOHandler';
 
 // JSON Objects
 import { ErrorJSON, HelloJSON } from './interface/JsonInterface';
 import hello from "../FIXED_MESSAGES/hello.json";
 import errors from '../FIXED_MESSAGES/errors.json';
 import getpeers from '../FIXED_MESSAGES/getpeers.json'
+import { DATABASE_PATH } from '../constants'
+
 
 // Global Variables
 const peersPath = path.resolve(__dirname, '../peers/peers.json');
@@ -324,114 +326,182 @@ export class CustomSocket {
 
   }
 
-  private async _blockValidation(obj: any): Promise<boolean> {
+  private async _blockValidation(block: any): Promise<boolean> {
 
     // Check proof-of-work correctness
+    const blockid = blake2s(canonicalize(block));
+    const blockDiff = parseInt(blockid,16);
+    const tDiff = parseInt(block.T,16);
 
-    // Check all transactions exist
+    // PoW doesn't hold
+    if(!(blockDiff<tDiff)){
+      this._fatalError(errors.INVALID_BLOCK_POW);
+      return false;
+    }
 
-    const transactionStatus = await this._blockTxValidation(obj.txids);
-
-
+    // Check transactions in the block is valid
+    const transactionStatus = await this._blockTxValidation(block);
 
     return true;
   }
 
-  private async _blockTxValidation(obj: any): Promise<boolean> {
+  private async _blockTxValidation(block: any): Promise<boolean> {
 
-    var txids = obj.txids;
+    const txids = block.txids;
+    const previd = block.previd;
     var coinbaseTx = "";
+    var currentInputs: string[] = [];
     var totalInputAmount = 0;
     var totalOutputAmount = 0;
 
+    // Get the UTXO set for the previd block
+    var UTXOOrigin = returnUTXO(previd);
+    // If the prev block id is not there, ask for it.
+    if (UTXOOrigin === undefined) {
+      // Wait for the object to be received.
+      let isReceived = await this._waitForObject(previd)
+      // If it is not there, terminate
+      if (!isReceived) {
+        this._fatalError(errors.UNFINDABLE_OBJECT);
+        return false;
+      } else {
+        UTXOOrigin = returnUTXO(previd);
+      }
+    }
+
+    // Copy UTXO set to local.
+    var UTXOSet = [...UTXOOrigin];
+
+    // Check each tx within the block.
     for (var i = 0; i < txids.length; i++) {
-      let txid = txids[i];
+      var txid = txids[i];
       // Check if all transaction exists
       let isThere = await this._db.exists(txid);
+      // If the tx is not in database.
       if (!isThere) {
-        // Ask for it on the Node level.
-        this._socket.emit('getobject', txid);
 
         // Wait two seconds and see if the object is received.
-        const isReceived = this._waitForObject(txid);
+        const isReceived = await this._waitForObject(txid);
 
         // If the object is not received, terminate connection.
-        if (!isReceived) this._fatalError(errors.UNFINDABLE_OBJECT);
+        if (!isReceived) {
+          this._fatalError(errors.UNFINDABLE_OBJECT);
+          return false;
+        }
 
-        return false;
       }
+
       // Retrieve the object and check if it is a valid transaction.
       const tx = await this._db.get(txid);
 
       // Check if it is a transaction and not a block.
       // TODO send back the failed transaction?
       const status = transaction.safeParse(tx);
-      if(!status.success){
+      if (!status.success) {
         this._fatalError(errors.INVALID_FORMAT)
+        return false;
       }
 
 
       // If it is the first index of the tx, it needs to be a coinbase transaction.
-      if(i==0){
+      if (i == 0) {
         // Stores coinbase transaction hash to prevent spending in current block.
         coinbaseTx = txid;
 
         // Check if the transaction is a coinbase transaction
         let status = transactionCoinbase.safeParse(tx);
         // If it is invalid, end connection and send error message.
-        if(!status.success){
+        if (!status.success) {
           this._fatalError(errors.INVALID_BLOCK_COINBASE);
+          return false;
         }
+
+        // Store coinbase transaction into UTXO
+        // Add 0 because the index of the UTXO is at 0.
+        UTXOSet.push(coinbaseTx + '0');
 
         totalOutputAmount += tx.outputs[0].value;
 
-      }else{
+      } else {
         // Parse if the transaction is not a coinbase transaction
         let status = transactionNonCoinbase.safeParse(tx);
 
-        // If it is a coinbase transaction, return false.
-        if(!status.success){
+        // If it is a coinbase transaction, terminate.
+        if (!status.success) {
           this._fatalError(errors.INVALID_BLOCK_COINBASE);
+          return false;
         }
 
-        // Loop through transaction inputs, sum all inputs, and 
-        // return false if the coinbase TX exist.
-
-        for(var input of tx.inputs){
+        // Loop through transaction inputs
+        for (var input of tx.inputs) {
           // Get the input transaction
           // Check if the outpoint is the current coinbase
           let txid = input.outpoint.txid
+          let index = input.outpoint.index
+          let utxo = txid + index;
           // If it is the coinbase transaction, terminate.
-          if(txid==coinbaseTx){
+          if (txid == coinbaseTx) {
             this._fatalError(errors.INVALID_BLOCK_COINBASE)
+            return false;
           }
 
-          // Check if the tx in UTXO set.
+          // Check if the tx is in UTXO set.
+          // If the tx input is not in the UTXO set given previd, or
+          // it is in another transaction input in the same block,
+          // terminate connection, return false.
+          if (!(utxo in UTXOSet) || utxo in currentInputs) {
+            this._fatalError(errors.INVALID_TX_OUTPOINT)
+            return false;
+          }
 
+          // Stores current UTXO in currentInput set.
+          currentInputs.push(utxo);
 
-          // Check if the tx is not testing UTXO set.
+          // Remove the tx from UTXO set.
+          UTXOSet = UTXOSet.filter((_utxo) => _utxo != utxo);
 
-          let inputTx = await this._db.get(txid)
           // Locate the value of the output from the input transaction
-          let inputAmt = inputTx.outputs[input.outpoint.index]
+          let inputTx = await this._db.get(txid)
+          let inputAmt = inputTx.outputs[index].value
 
+          // Add input value to total input value for checking entire block
+          // law of conservation.
           totalInputAmount += inputAmt;
 
-          // Place tx in testing UTXO set.
         }
 
-        // Loop through transaction outputs, sum all outputs.
+        // Loop through transaction outputs, sum all outputs
+        // and add new UTXOs in UTXOSet
 
+        for (var i = 0; i < tx.outputs.length; i++) {
+          // Add value of the output.
+          totalOutputAmount += tx.outputs[i].value;
+
+          // Add new UTXO into the UTXO set.
+          let utxo = txid + i;
+          UTXOSet.push(utxo);
+        }
 
       }
 
     }
 
     // Check if law of conservation is held in block.
+    
+    // Add block issuerance in the total input amount.
+    totalInputAmount += 50*(Math.pow(10,12));
 
+    // If law of conservation is broken, terminate.
+    if(totalInputAmount < totalOutputAmount){
 
-    // Remove testing UTXO set from UTXO or reset to zero.
+      this._fatalError(errors.INVALID_BLOCK_COINBASE)
+      return false;
 
+    }
+
+    // Update UTXO set for the current blockid
+    const blockid = blake2s(canonicalize(block));
+    addUTXOSet(blockid,UTXOSet);
 
     return true;
   }
@@ -440,10 +510,18 @@ export class CustomSocket {
   // 2 seconds of calling this function, it will return false.
   private async _waitForObject(txid: string): Promise<boolean> {
 
-    return new Promise((resolve) => {
+    // Ask for it on the Node level.
+    this._socket.emit('getobject', txid);
+
+    return new Promise( (resolve) => {
       // Create a two second timeout. If no object was received, return false.
-      const timeout = setTimeout(() => {
-        resolve(false);
+      const timeout = setTimeout(async () => {
+        if(await this._db.exists(txid)){
+          resolve(true);
+
+        }else{
+          resolve(false);
+        }
       }, 2000)
       // When the socket receives a valid object with the corresponding ID,
       // Return true
