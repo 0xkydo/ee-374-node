@@ -12,7 +12,8 @@ export default function formatChecker(obj: any): [boolean, any] {
     case 'block':
       return [false, errors.INVALID_FORMAT]
     case 'hello':
-      if (obj.version.slice(0, -1) === "0.9.") {
+      var helloStatus = hello.safeParse(obj);
+      if (helloStatus.success) {
         return [true, null];
       } else {
         return [false, errors.INVALID_FORMAT];
@@ -57,7 +58,6 @@ export default function formatChecker(obj: any): [boolean, any] {
         return [false, errors.INVALID_FORMAT];
       }
       break
-
     case 'object':
       // Check if the the object is a transaction or a block.
       if (obj.object.type == 'transaction') {
@@ -142,6 +142,12 @@ export const transactionCoinbase = z.object({
 })
 
 // Whole objects
+
+const hello = z.object({
+  type: z.literal('hello'),
+  version: z.string().regex(new RegExp('^0\.9\.[0-9]$')),
+  agent: genericText
+})
 
 const block = z.object({
   type: z.literal('block'),
