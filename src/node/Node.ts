@@ -17,7 +17,9 @@ var testingPath = path.resolve(__dirname, '../peers/testing.json');
 fs.writeFileSync(testingPath, `{"peers":[]}`);
 
 // Store genesis block
-var _db = new level(DATABASE_PATH);
+var databasePath = path.resolve(__dirname, '../database');
+
+var _db = new level(databasePath);
 _db.put('0000000052a0e645eca917ae1c196e0d0a4fb756747f29ef52594d68484bb5e2',genesis);
 
 // Spin up node instance
