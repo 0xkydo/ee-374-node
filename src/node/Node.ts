@@ -24,11 +24,16 @@ _db.put('0000000052a0e645eca917ae1c196e0d0a4fb756747f29ef52594d68484bb5e2',genes
 let node = new MarabuNode(PORT);
 
 // Connect to existing nodes
-for(var peer of peers.peers){
-  const address = peer.split(":");
-  const IP = address[0];
-  const PORT = Number(address[1]);
-
-  node.connectToNode(IP,PORT);
+try{
+  for(var peer of peers.peers){
+    const address = peer.split(":");
+    const IP = address[0];
+    const PORT = Number(address[1]);
+  
+    node.connectToNode(IP,PORT);
+  }
+}catch(e){
+  console.error(e);
 }
+
 
