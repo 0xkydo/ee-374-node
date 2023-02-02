@@ -30,13 +30,10 @@ export class CustomSocket {
   // Database
   private _db = new level(DATABASE_PATH);
 
-  // Event Emitter
-  private _emitter = new EventEmitter();
-
   // Constants
   MAX_BUFFER_SIZE: number = 1 * 1000000;
-  MAX_ERROR_COUNTS: number = 50
-  MAX_MESSAGE_SECOND: number = 10
+  MAX_ERROR_COUNTS: number = 5;
+  MAX_MESSAGE_SECOND: number = 10;
 
   // Node variables
   Name: string = '';
@@ -130,9 +127,10 @@ export class CustomSocket {
   // _formatChecker passes it down.
   private _dataHandler(data: any) {
 
+    // Set maximum message rate per second.
     setTimeout(() => {
       if(this.messageCounter>this.MAX_MESSAGE_SECOND){
-        this._fatalError(errors.INVALID_FORMAT);
+        this._nonFatalError(errors.INTERNAL_ERROR);
       }else{
         this.messageCounter--;
       }
