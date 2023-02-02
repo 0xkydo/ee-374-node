@@ -7,7 +7,7 @@ import fs from 'fs';
 
 // Internal
 import { setPeersHandler } from './utils/setPeersHandler'
-import formatChecker, { transactionCoinbase, transactionNonCoinbase, transaction } from './utils/formatChecker';
+import formatChecker, { transactionCoinbase, transactionNonCoinbase, transaction, genesisBlock } from './utils/formatChecker';
 import { blake2s, batchSigVerifier } from './utils/crypto';
 import { returnUTXO, addUTXOSet } from './utils/UTXOHandler';
 
@@ -342,7 +342,12 @@ export class CustomSocket {
     // Check transactions in the block is valid
     const transactionStatus = await this._blockTxValidation(block);
 
-    return true;
+    if(transactionStatus){
+      return true;
+    }else{
+      return false;
+    }
+
   }
 
   private async _blockTxValidation(block: any): Promise<boolean> {
@@ -390,6 +395,7 @@ export class CustomSocket {
         }
 
       }
+
 
       // Retrieve the object and check if it is a valid transaction.
       const tx = await this._db.get(txid);

@@ -183,7 +183,7 @@
       "note": "First block on genesis, 50 bu reward",
       "previd": "0000000052a0e645eca917ae1c196e0d0a4fb756747f29ef52594d68484bb5e2",
       "txids": [
-        "8265faf623dfbcb17528fcd2e67fdf78de791ed4c7c60480e8cd21c6cdc8bcd4"
+        "f55d2a655789c95d3f621d3b3a06ea0a14d3cb8f54017fc616dcc71a70aa7241"
       ],
       "type": "block"
     }
@@ -195,8 +195,8 @@
       "height": 1,
       "outputs": [
         {
-          "pubkey": "daa520a25ccde0adad74134f2be50e6b55b526b1a4de42d8032abf7649d14bfc",
-          "value": 50000000000000
+          "pubkey": "e0d95af909523ffbe1e3045a6116fcff5b4a5177508f4c40a54d179e12aab538",
+          "value": 50000000000
         }
       ]
     }

@@ -74,6 +74,13 @@ export default function formatChecker(obj: any): [boolean, any] {
         }
       } else {
 
+        // Check if it is genesis block
+
+        let isGensis = genesisBlock.safeParse(obj.object);
+        if(isGensis.success){
+          return [ true, null];
+        }
+
         // Check block format.
         let blockStatus = block.safeParse(obj.object);
 
@@ -160,6 +167,18 @@ const block = z.object({
   note: genericText.optional(),
   studentids: z.array(genericText).max(10).optional()
 })
+
+export const genesisBlock = z.object({
+  type: z.literal('block'),
+  txids: z.array(hash).length(0),
+  nonce: z.literal("000000000000000000000000000000000000000000000000000000021bea03ed"),
+  previd: z.null(),
+  created: z.number().int().nonnegative(),
+  T: z.literal('00000000abc00000000000000000000000000000000000000000000000000000'),
+  note: z.literal("The New York Times 2022-12-13: Scientists Achieve Nuclear Fusion Breakthrough With Blast of 192 Lasers"),
+  miner: z.literal("Marabu")
+})
+
 
 export const transaction = z.union([transactionNonCoinbase, transactionCoinbase])
 
