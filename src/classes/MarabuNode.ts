@@ -19,8 +19,6 @@ export class MarabuNode {
 
     this._server = net.createServer((_socket) => {
 
-
-
       _socket.on('connect', () => {
         // Check if it a blocked address.
         for (var blockedAddress of blocked.address) {
