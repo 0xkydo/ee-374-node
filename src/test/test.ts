@@ -20,7 +20,7 @@ const test = '45.63.89.228';
 
 // The port number and hostname of the server.
 const port = 18018;
-const host = nodeAddy;
+const host = local;
 
 // Create a new TCP client.
 const client = new Net.Socket();

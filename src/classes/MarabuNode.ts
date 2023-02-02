@@ -5,6 +5,7 @@ import net from 'net';
 import { CustomSocket } from './CustomSocket';
 import ihaveobject from '../FIXED_MESSAGES/ihaveobject.json';
 import getobject from '../FIXED_MESSAGES/getobject.json';
+import blocked from '../peers/blocked.json';
 
 export class MarabuNode {
 
@@ -18,8 +19,18 @@ export class MarabuNode {
 
     this._server = net.createServer((_socket) => {
 
-      let socket = new CustomSocket(_socket);
 
+
+      _socket.on('connect', () => {
+        // Check if it a blocked address.
+        for (var blockedAddress of blocked.address) {
+          if (_socket.remoteAddress == blockedAddress) {
+            _socket.destroy();
+          }
+        }
+      })
+      
+      let socket = new CustomSocket(_socket);
       this.connections.push(socket);
 
       console.log(`NODE | TOTAL CONNECTION | ${this.connections.length}`);
@@ -36,6 +47,8 @@ export class MarabuNode {
       socket.on('getobject', async (objectID) => {
         await this.broadcast(objectID, getobject);
       })
+
+
     })
 
     this._server.listen(PORT, '0.0.0.0', () => {
@@ -58,6 +71,12 @@ export class MarabuNode {
 
     // Define on.connection logic and initiate the CustomSocket wrapper.
     _socket.on("connect", () => {
+      // Check if it a blocked address.
+      for (var blockedAddress of blocked.address) {
+        if (_socket.remoteAddress == blockedAddress) {
+          _socket.destroy();
+        }
+      }
       let socket = new CustomSocket(_socket);
       this.connections.push(socket);
       console.log(`NODE | TOTAL CONNECTION | ${this.connections.length}`);

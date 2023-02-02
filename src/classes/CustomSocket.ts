@@ -36,6 +36,7 @@ export class CustomSocket {
   // Constants
   MAX_BUFFER_SIZE: number = 1 * 1000000;
   MAX_ERROR_COUNTS: number = 50
+  MAX_MESSAGE_SECOND: number = 10
 
   // Node variables
   Name: string = '';
@@ -45,6 +46,7 @@ export class CustomSocket {
   // Status Variables
   handShakeCompleted: boolean = false;
   errorCounter: number = 0;
+  messageCounter: number = 0;
 
   // Message Variables
   buffer: string = "";
@@ -64,7 +66,7 @@ export class CustomSocket {
 
     // Set socket.on functions
     this._socket.on('data', (data) => { this._dataHandler(data) });
-    this._socket.on('timeout', () => { this._timeoutHandler() });
+    this._socket.on('error', (e) => { console.log(e) });
 
 
     console.log(`CONN | ${this.remoteAddress} | CustomSocket class wrapped`);
@@ -123,19 +125,18 @@ export class CustomSocket {
     }
   }
 
-  // After 10 seconds of idle, if there's still things in the buffer, terminate connection.
-  private _timeoutHandler() {
-
-    if (this.buffer.length > 0) {
-      this._fatalError(errors.INVALID_FORMAT);
-    }
-
-  }
-
   // _dataHandler Handles the first step converting buffer to string
   // data. It then passes the string data to _formatChecker and
   // _formatChecker passes it down.
   private _dataHandler(data: any) {
+
+    setTimeout(() => {
+      if(this.messageCounter>this.MAX_MESSAGE_SECOND){
+        this._fatalError(errors.INVALID_FORMAT);
+      }else{
+        this.messageCounter--;
+      }
+    }, 1000);
 
     // If the buffer data gets too long before being formed into a message,
     // connection will be terminated and buffer will be cleared.
@@ -161,7 +162,7 @@ export class CustomSocket {
     if (this.messages.length > 1) {
       // Cancel buffer timeout.
       clearTimeout(this.bufferTimer);
-
+      this.messageCounter ++;
       // Check all message instead of the last one.
       for (var message of this.messages.slice(0, -1)) {
         // Pass message to processing

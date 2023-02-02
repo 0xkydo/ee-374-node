@@ -31,7 +31,6 @@ try{
     const address = peer.split(":");
     const IP = address[0];
     const PORT = Number(address[1]);
-  
     node.connectToNode(IP,PORT);
   }
 }catch(e){
