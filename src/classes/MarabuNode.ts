@@ -15,9 +15,13 @@ export class MarabuNode {
   // Constructor initiate the node. It establishes the server, wrap and push 
   // the socket to the node class for record keeping.
   constructor(PORT: number) {
+
     this._server = net.createServer((_socket) => {
+
       let socket = new CustomSocket(_socket);
+
       this.connections.push(socket);
+
       console.log(`NODE | TOTAL CONNECTION | ${this.connections.length}`);
       socket.on('close', () => {
         console.log(`NODE | REMOVED SOCKET | ${socket.remoteAddress}`);
@@ -33,6 +37,7 @@ export class MarabuNode {
         await this.broadcast(objectID, getobject);
       })
     })
+
     this._server.listen(PORT, '0.0.0.0', () => {
       console.log(`NODE | START | Listening at port: ${PORT}`);
     });
