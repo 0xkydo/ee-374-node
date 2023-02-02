@@ -1,4 +1,3 @@
-import { stat } from "fs";
 import { isIP } from "net";
 import { z } from 'zod';
 const isValidDomain = require('is-valid-domain')
@@ -13,7 +12,8 @@ export default function formatChecker(obj: any): [boolean, any] {
     case 'block':
       return [false, errors.INVALID_FORMAT]
     case 'hello':
-      if (obj.version.slice(0, -1) === "0.9.") {
+      var helloStatus = hello.safeParse(obj);
+      if (helloStatus.success) {
         return [true, null];
       } else {
         return [false, errors.INVALID_FORMAT];
@@ -52,27 +52,41 @@ export default function formatChecker(obj: any): [boolean, any] {
       break;
     case 'getobject':
       var getObjStatus = getObject.safeParse(obj);
-      if(getObjStatus.success){
+      if (getObjStatus.success) {
 
-      }else{
-        return [false,errors.INVALID_FORMAT];
+      } else {
+        return [false, errors.INVALID_FORMAT];
       }
       break
-
     case 'object':
+      // Check if the the object is a transaction or a block.
       if (obj.object.type == 'transaction') {
+
+        // Check transaction format.
         let transactionStatus = transaction.safeParse(obj.object);
 
         if (transactionStatus.success) {
+
+          return [true, null];
 
         } else {
           return [false, errors.INVALID_FORMAT]
         }
       } else {
+
+        // Check if it is genesis block
+
+        let isGensis = genesisBlock.safeParse(obj.object);
+        if(isGensis.success){
+          return [ true, null];
+        }
+
+        // Check block format.
         let blockStatus = block.safeParse(obj.object);
 
-
         if (blockStatus.success) {
+
+          return [true, null];
 
         } else {
 
@@ -98,11 +112,14 @@ export default function formatChecker(obj: any): [boolean, any] {
 
 // Intermediate types
 
+// Text
 const hash = z.string().length(64).regex(new RegExp('^[a-z0-9]+$'))
 
 const signature = z.string().length(128).regex(new RegExp('^[a-z0-9]+$'));
 
 const pubkey = z.string().length(64).regex(new RegExp('^[a-z0-9]+$'));
+
+const genericText = z.string().max(128); // For student ID, note, miner inside block.
 
 const output = z.object({
   pubkey: pubkey,
@@ -119,26 +136,49 @@ const input = z.object({
   sig: signature
 })
 
-const transactionNonCoinbase = z.object({
+export const transactionNonCoinbase = z.object({
   type: z.literal('transaction'),
   inputs: z.array(input),
   outputs: z.array(output)
 })
 
-const transactionCoinbase = z.object({
+export const transactionCoinbase = z.object({
   type: z.literal('transaction'),
   height: z.number().int().nonnegative(),
   outputs: z.array(output).length(1)
 })
 
+// Whole objects
+
+const hello = z.object({
+  type: z.literal('hello'),
+  version: z.string().regex(new RegExp('^0\.9\.[0-9]$')),
+  agent: genericText
+})
+
 const block = z.object({
   type: z.literal('block'),
   txids: z.array(hash),
-  nonce: z.string().length(64),
-  previd: z.string().length(64),
+  nonce: hash,
+  previd: hash,
   created: z.number().int().nonnegative(),
-  T: z.string()
+  T: z.literal('00000000abc00000000000000000000000000000000000000000000000000000'),
+  miner: genericText.optional(),
+  note: genericText.optional(),
+  studentids: z.array(genericText).max(10).optional()
 })
+
+export const genesisBlock = z.object({
+  type: z.literal('block'),
+  txids: z.array(hash).length(0),
+  nonce: z.literal("000000000000000000000000000000000000000000000000000000021bea03ed"),
+  previd: z.null(),
+  created: z.number().int().nonnegative(),
+  T: z.literal('00000000abc00000000000000000000000000000000000000000000000000000'),
+  note: z.literal("The New York Times 2022-12-13: Scientists Achieve Nuclear Fusion Breakthrough With Blast of 192 Lasers"),
+  miner: z.literal("Marabu")
+})
+
 
 export const transaction = z.union([transactionNonCoinbase, transactionCoinbase])
 

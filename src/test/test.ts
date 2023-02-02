@@ -1,9 +1,14 @@
 // Include Nodejs' net module.
 import Net from 'net';
 import { canonicalize } from "json-canonicalize";
+import fs from 'fs'
+import path from 'path'
 
+import {returnUTXO, addUTXOSet} from '../classes/utils/UTXOHandler';
+
+import { blake2s } from '../classes/utils/crypto';
 import errors from '../FIXED_MESSAGES/errors.json';
-import hello from "../FIXED_MESSAGES/hello_test.json";
+import hello from "./hello_test.json";
 import {transaction} from '../classes/utils/formatChecker'
 import delay from "delay";
 import msg from './test.json'
@@ -20,12 +25,27 @@ const host = local;
 // Create a new TCP client.
 const client = new Net.Socket();
 
+
+console.log(canonicalize(msg.block_tx.object));
+console.log(blake2s(canonicalize(msg.block_tx.object)))
+
+
+const privKey = "a6adca96be7f374768e5bee4db86fcf97a641e4662bb2eb9742c72151fe34c8d";
+const pubKey = "e0d95af909523ffbe1e3045a6116fcff5b4a5177508f4c40a54d179e12aab538";
+
+
+
+
+
+
 // Send a connection request to the server.
 client.connect({ port: port, host: host }, async function () {
   // If there is no error, the server has accepted the request and created a new 
   // socket dedicated to us.
 
   client.write(canonicalize(hello)+'\n');
+
+  client.write(canonicalize({"type":"getobject","objectid":"3dbd0f5a6cbb7a11b029dc60df9d3f5cfe246c1b64cd836082e13cdbf9735140"})+'\n')
 
   // client.write(canonicalize(msg.object1)+'\n');
 
@@ -35,7 +55,11 @@ client.connect({ port: port, host: host }, async function () {
 
   // await delay(5000);
 
-  client.write(canonicalize(msg.object8)+'\n');
+  // client.write(canonicalize(msg.block)+'\n');
+
+  // await delay(250);
+
+  // client.write(canonicalize(msg.block_tx)+'\n');
 
 
 });

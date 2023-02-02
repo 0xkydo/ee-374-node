@@ -7,15 +7,17 @@ import fs from 'fs';
 
 // Internal
 import { setPeersHandler } from './utils/setPeersHandler'
-import formatChecker from './utils/formatChecker';
+import formatChecker, { transactionCoinbase, transactionNonCoinbase, transaction, genesisBlock } from './utils/formatChecker';
 import { blake2s, batchSigVerifier } from './utils/crypto';
-import { DATABASE_PATH } from '../constants'
+import { returnUTXO, addUTXOSet } from './utils/UTXOHandler';
 
 // JSON Objects
 import { ErrorJSON, HelloJSON } from './interface/JsonInterface';
 import hello from "../FIXED_MESSAGES/hello.json";
 import errors from '../FIXED_MESSAGES/errors.json';
 import getpeers from '../FIXED_MESSAGES/getpeers.json'
+import { DATABASE_PATH } from '../constants'
+
 
 // Global Variables
 const peersPath = path.resolve(__dirname, '../peers/peers.json');
@@ -34,6 +36,7 @@ export class CustomSocket {
   // Constants
   MAX_BUFFER_SIZE: number = 1 * 1000000;
   MAX_ERROR_COUNTS: number = 50
+  MAX_MESSAGE_SECOND: number = 10
 
   // Node variables
   Name: string = '';
@@ -43,6 +46,7 @@ export class CustomSocket {
   // Status Variables
   handShakeCompleted: boolean = false;
   errorCounter: number = 0;
+  messageCounter: number = 0;
 
   // Message Variables
   buffer: string = "";
@@ -62,7 +66,7 @@ export class CustomSocket {
 
     // Set socket.on functions
     this._socket.on('data', (data) => { this._dataHandler(data) });
-    this._socket.on('timeout', () => { this._timeoutHandler() });
+    this._socket.on('error', (e) => { console.log(e) });
 
 
     console.log(`CONN | ${this.remoteAddress} | CustomSocket class wrapped`);
@@ -106,7 +110,8 @@ export class CustomSocket {
   on(event: 'lookup', listener: (err: Error, address: string, family: string | number, host: string) => void): void;
   on(event: 'ready', listener: () => void): void;
   on(event: 'timeout', listener: () => void): void;
-  on(event: 'object', listener: (data: string) => void): void;
+  on(event: 'ihaveobject', listener: (data: string) => void): void;
+  on(event: 'getobject', listener: (data: string) => void): void;
   on(event: string, listener: (...args: any[]) => void) {
     switch (event) {
       case 'data':
@@ -120,19 +125,18 @@ export class CustomSocket {
     }
   }
 
-  // After 10 seconds of idle, if there's still things in the buffer, terminate connection.
-  private _timeoutHandler() {
-
-    if (this.buffer.length > 0) {
-      this._fatalError(errors.INVALID_FORMAT);
-    }
-
-  }
-
   // _dataHandler Handles the first step converting buffer to string
   // data. It then passes the string data to _formatChecker and
   // _formatChecker passes it down.
   private _dataHandler(data: any) {
+
+    setTimeout(() => {
+      if(this.messageCounter>this.MAX_MESSAGE_SECOND){
+        this._fatalError(errors.INVALID_FORMAT);
+      }else{
+        this.messageCounter--;
+      }
+    }, 1000);
 
     // If the buffer data gets too long before being formed into a message,
     // connection will be terminated and buffer will be cleared.
@@ -158,7 +162,7 @@ export class CustomSocket {
     if (this.messages.length > 1) {
       // Cancel buffer timeout.
       clearTimeout(this.bufferTimer);
-
+      this.messageCounter ++;
       // Check all message instead of the last one.
       for (var message of this.messages.slice(0, -1)) {
         // Pass message to processing
@@ -210,10 +214,10 @@ export class CustomSocket {
           setPeersHandler(obj);
           break;
         case "getobject":
-          this._sendObject(obj);
+          this._sendObjectHandler(obj);
           break;
         case "ihaveobject":
-          this._requestObject(obj);
+          this._requestObjectHandler(obj);
           break;
         case "object":
           this._objectHandler(obj);
@@ -239,7 +243,7 @@ export class CustomSocket {
   }
 
   // Send Object
-  private _sendObject(obj: any) {
+  private _sendObjectHandler(obj: any) {
     // Check if requested object exists in file.
     this._db.exists(obj.objectid).then((exists) => {
 
@@ -264,7 +268,7 @@ export class CustomSocket {
   }
 
   // Request Object
-  private _requestObject(obj: any) {
+  private _requestObjectHandler(obj: any) {
 
     // Check if this object already exist in file.
     this._db.exists(obj.objectid).then((exists) => {
@@ -304,20 +308,14 @@ export class CustomSocket {
       await this._db.put(objectID, obj.object);
 
       // Let the node know I have a file and broadcast to all current connections.
-      this._socket.emit('object', objectID);
+      this._socket.emit('ihaveobject', objectID);
       console.log(`STAT | ${this.remoteAddress} | Received and stored valid object ${objectID}`);
 
     }
   }
 
-  // Transaction Validation Logic
+  // Object Validation Logic
   private async _isValidObject(obj: any): Promise<boolean> {
-
-    // I think we can remove all this because I check the format of the object within the formatCheckers
-    // if (!this._isValidFormatTX(obj)) {
-    //   this._fatalError(errors.INVALID_FORMAT);
-    //   return false;
-    // }
 
     // Separate logic for transaction and block.
     if (obj.type == 'transaction') {
@@ -328,8 +326,220 @@ export class CustomSocket {
     }
 
   }
-  private _blockValidation(obj: any): boolean {
+
+  private async _blockValidation(block: any): Promise<boolean> {
+
+    // Check proof-of-work correctness
+    const blockid = blake2s(canonicalize(block));
+    const blockDiff = parseInt(blockid,16);
+    const tDiff = parseInt(block.T,16);
+
+    // PoW doesn't hold
+    if(!(blockDiff<tDiff)){
+      this._fatalError(errors.INVALID_BLOCK_POW);
+      return false;
+    }
+
+    // Check transactions in the block is valid
+    const transactionStatus = await this._blockTxValidation(block);
+
+    if(transactionStatus){
+      return true;
+    }else{
+      return false;
+    }
+
+  }
+
+  private async _blockTxValidation(block: any): Promise<boolean> {
+
+    const txids = block.txids;
+    const previd = block.previd;
+    var coinbaseTx = "";
+    var currentInputs: string[] = [];
+    var totalInputAmount = 0;
+    var totalOutputAmount = 0;
+
+    // Get the UTXO set for the previd block
+    var UTXOOrigin = returnUTXO(previd);
+    // If the prev block id is not there, ask for it.
+    if (UTXOOrigin === undefined) {
+      // Wait for the object to be received.
+      let isReceived = await this._waitForObject(previd)
+      // If it is not there, terminate
+      if (!isReceived) {
+        this._fatalError(errors.UNFINDABLE_OBJECT);
+        return false;
+      } else {
+        UTXOOrigin = returnUTXO(previd);
+      }
+    }
+
+    // Copy UTXO set to local.
+    var UTXOSet = [...UTXOOrigin];
+
+    // Check each tx within the block.
+    for (var i = 0; i < txids.length; i++) {
+      var txid = txids[i];
+      // Check if all transaction exists
+      let isThere = await this._db.exists(txid);
+      // If the tx is not in database.
+      if (!isThere) {
+
+        // Wait two seconds and see if the object is received.
+        const isReceived = await this._waitForObject(txid);
+
+        // If the object is not received, terminate connection.
+        if (!isReceived) {
+          this._fatalError(errors.UNFINDABLE_OBJECT);
+          return false;
+        }
+
+      }
+
+
+      // Retrieve the object and check if it is a valid transaction.
+      const tx = await this._db.get(txid);
+
+      // Check if it is a transaction and not a block.
+      // TODO send back the failed transaction?
+      const status = transaction.safeParse(tx);
+      if (!status.success) {
+        this._fatalError(errors.INVALID_FORMAT)
+        return false;
+      }
+
+
+      // If it is the first index of the tx, it needs to be a coinbase transaction.
+      if (i == 0) {
+        // Stores coinbase transaction hash to prevent spending in current block.
+        coinbaseTx = txid;
+
+        // Check if the transaction is a coinbase transaction
+        let status = transactionCoinbase.safeParse(tx);
+        // If it is invalid, end connection and send error message.
+        if (!status.success) {
+          this._fatalError(errors.INVALID_BLOCK_COINBASE);
+          return false;
+        }
+
+        // Store coinbase transaction into UTXO
+        // Add 0 because the index of the UTXO is at 0.
+        UTXOSet.push(coinbaseTx + '0');
+
+        totalOutputAmount += tx.outputs[0].value;
+
+      } else {
+        // Parse if the transaction is not a coinbase transaction
+        let status = transactionNonCoinbase.safeParse(tx);
+
+        // If it is a coinbase transaction, terminate.
+        if (!status.success) {
+          this._fatalError(errors.INVALID_BLOCK_COINBASE);
+          return false;
+        }
+
+        // Loop through transaction inputs
+        for (var input of tx.inputs) {
+          // Get the input transaction
+          // Check if the outpoint is the current coinbase
+          let txid = input.outpoint.txid
+          let index = input.outpoint.index
+          let utxo = txid + index;
+          // If it is the coinbase transaction, terminate.
+          if (txid == coinbaseTx) {
+            this._fatalError(errors.INVALID_BLOCK_COINBASE)
+            return false;
+          }
+
+          // Check if the tx is in UTXO set.
+          // If the tx input is not in the UTXO set given previd, or
+          // it is in another transaction input in the same block,
+          // terminate connection, return false.
+          if (!(utxo in UTXOSet) || utxo in currentInputs) {
+            this._fatalError(errors.INVALID_TX_OUTPOINT)
+            return false;
+          }
+
+          // Stores current UTXO in currentInput set.
+          currentInputs.push(utxo);
+
+          // Remove the tx from UTXO set.
+          UTXOSet = UTXOSet.filter((_utxo) => _utxo != utxo);
+
+          // Locate the value of the output from the input transaction
+          let inputTx = await this._db.get(txid)
+          let inputAmt = inputTx.outputs[index].value
+
+          // Add input value to total input value for checking entire block
+          // law of conservation.
+          totalInputAmount += inputAmt;
+
+        }
+
+        // Loop through transaction outputs, sum all outputs
+        // and add new UTXOs in UTXOSet
+
+        for (var i = 0; i < tx.outputs.length; i++) {
+          // Add value of the output.
+          totalOutputAmount += tx.outputs[i].value;
+
+          // Add new UTXO into the UTXO set.
+          let utxo = txid + i;
+          UTXOSet.push(utxo);
+        }
+
+      }
+
+    }
+
+    // Check if law of conservation is held in block.
+    
+    // Add block issuerance in the total input amount.
+    totalInputAmount += 50*(Math.pow(10,12));
+
+    // If law of conservation is broken, terminate.
+    if(totalInputAmount < totalOutputAmount){
+
+      this._fatalError(errors.INVALID_BLOCK_COINBASE)
+      return false;
+
+    }
+
+    // Update UTXO set for the current blockid
+    const blockid = blake2s(canonicalize(block));
+    addUTXOSet(blockid,UTXOSet);
+
     return true;
+  }
+
+  // Wait for a given object to be received. If it is not received after
+  // 2 seconds of calling this function, it will return false.
+  private async _waitForObject(txid: string): Promise<boolean> {
+
+    // Ask for it on the Node level.
+    this._socket.emit('getobject', txid);
+
+    return new Promise( (resolve) => {
+      // Create a two second timeout. If no object was received, return false.
+      const timeout = setTimeout(async () => {
+        if(await this._db.exists(txid)){
+          resolve(true);
+
+        }else{
+          resolve(false);
+        }
+      }, 2000)
+      // When the socket receives a valid object with the corresponding ID,
+      // Return true
+      this._socket.on('ihaveobject', (id) => {
+        if (id == txid) {
+          clearTimeout(timeout);
+          resolve(true);
+        }
+      })
+
+    })
   }
 
   private async _transactionValidation(obj: any): Promise<boolean> {
@@ -413,6 +623,10 @@ export class CustomSocket {
     this.handShakeCompleted = true;
     console.log(`STAT | ${this.remoteAddress} | Handshake completed.`);
   }
+
+  /*************************
+  Error Functions
+  **************************/
 
   // Handles all non-fatal error messaging. However, if total error surpasses 50, the node will be force disconnected.
   private _nonFatalError(error: ErrorJSON) {
