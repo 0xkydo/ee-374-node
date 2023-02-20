@@ -40,7 +40,7 @@ const pubKey = "e0d95af909523ffbe1e3045a6116fcff5b4a5177508f4c40a54d179e12aab538
 
 // Send a connection request to the server.
 client.connect({ port: port, host: host }, async function () {
-  // If there is no error, the server has accepted the request and created a new 
+  // If there is no error, the server has accepted the request and created a new
   // socket dedicated to us.
 
   client.write(canonicalize(hello)+'\n');

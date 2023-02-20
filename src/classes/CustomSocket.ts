@@ -492,7 +492,7 @@ export class CustomSocket {
     }
 
     // Check if law of conservation is held in block.
-    
+
     // Add block issuerance in the total input amount.
     totalInputAmount += 50*(Math.pow(10,12));
 
