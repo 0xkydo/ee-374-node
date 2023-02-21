@@ -139,7 +139,9 @@ export class Peer {
       this.onMessageIHaveObject.bind(this),
       this.onMessageGetObject.bind(this),
       this.onMessageObject.bind(this),
-      this.onMessageError.bind(this)
+      this.onMessageError.bind(this),
+      this.onMessageGetChainTip.bind(this),
+      this.onMessageChainTip.bind(this)
     )(msg)
   }
   async onMessageHello(msg: HelloMessageType) {
