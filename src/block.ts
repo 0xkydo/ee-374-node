@@ -253,7 +253,7 @@ export class Block {
           throw new AnnotatedError('INVALID_BLOCK_COINBASE', `Block ${this.blockid} has invalid block height relative to previous block`)
         }
 
-        if ((this.toNetworkObject()).created <= (parentBlock.toNetworkObject()).created || (this.toNetworkObject()).created >= Math.floor(Date.now() / 1000)){
+        if ((this.toNetworkObject()).created <= (parentBlock.toNetworkObject()).created || ( this.toNetworkObject()).created >= Math.floor(Date.now() / 1000)){
           throw new AnnotatedError('INVALID_BLOCK_TIMESTAMP', `Block ${this.blockid} has invalid block timestamp`)
         }
 
