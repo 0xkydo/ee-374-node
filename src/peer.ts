@@ -54,7 +54,7 @@ export class Peer {
       peers: [...peerManager.knownPeers]
     })
   }
-  
+
   async sendIHaveObject(obj: any) {
     this.sendMessage({
       type: 'ihaveobject',
@@ -107,8 +107,8 @@ export class Peer {
     await this.sendGetPeers()
     await this.sendGetChainTip()
   }
-  
- 
+
+
   async onTimeout() {
     return await this.fatalError(new AnnotatedError('INVALID_FORMAT', 'Timed out before message was complete'))
   }
@@ -198,9 +198,22 @@ export class Peer {
   }
   async onMessageGetChainTip(msg: GetChainTipMessageType) {
     // return current chaintip.
+    return network.getChainTip();
   }
   async onMessageChainTip(msg: ChainTipMessageType) {
     // set current chain tip to msg.
+    let instance: Block;
+    try {
+      let obj = await objectManager.get(msg.objectid);
+      instance = await objectManager.validate(obj, this)
+      if(Block.guard(instance)){
+        let currHeight = (await instance.getCoinbase()).height;
+        if(currHeight > network.latestBlockHeight()){
+          network.setBlockHeight(currHeight)
+          network.setChainTip(instance.blockid)
+        }
+      }
+    }
   }
   async onMessageObject(msg: ObjectMessageType) {
     const objectid: ObjectId = objectManager.id(msg.object)
@@ -223,6 +236,13 @@ export class Peer {
     let instance: Block | Transaction;
     try {
       instance = await objectManager.validate(msg.object, this)
+      if(Block.guard(instance)){
+        let currHeight = (await instance.getCoinbase()).height;
+        if(currHeight > network.latestBlockHeight()){
+          network.setBlockHeight(currHeight)
+          network.setChainTip(instance.blockid)
+        }
+      }
     }
     catch (e: any) {
       this.sendError(e)
