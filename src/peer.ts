@@ -54,6 +54,7 @@ export class Peer {
       peers: [...peerManager.knownPeers]
     })
   }
+  
   async sendIHaveObject(obj: any) {
     this.sendMessage({
       type: 'ihaveobject',
@@ -70,6 +71,11 @@ export class Peer {
     this.sendMessage({
       type: 'getobject',
       objectid: objid
+    })
+  }
+  async sendGetChainTip() {
+    this.sendMessage({
+      type: 'getchaintip'
     })
   }
   async sendError(err: AnnotatedError) {
@@ -99,7 +105,10 @@ export class Peer {
     this.active = true
     await this.sendHello()
     await this.sendGetPeers()
+    await this.sendGetChainTip()
   }
+  
+ 
   async onTimeout() {
     return await this.fatalError(new AnnotatedError('INVALID_FORMAT', 'Timed out before message was complete'))
   }
@@ -188,8 +197,10 @@ export class Peer {
     await this.sendObject(obj)
   }
   async onMessageGetChainTip(msg: GetChainTipMessageType) {
+    // return current chaintip.
   }
   async onMessageChainTip(msg: ChainTipMessageType) {
+    // set current chain tip to msg.
   }
   async onMessageObject(msg: ObjectMessageType) {
     const objectid: ObjectId = objectManager.id(msg.object)
