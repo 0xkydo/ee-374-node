@@ -243,11 +243,17 @@ export class Block {
           throw new AnnotatedError('UNFINDABLE_OBJECT', `Parent block of block ${this.blockid} was null`)
         }
 
-        if ((await this.getCoinbase()).height != (await parentBlock.getCoinbase()).height + 1){
+        let parentHeight = (await parentBlock.getCoinbase()).height;
+
+        if(parentHeight==null)
+          parentHeight = 0;
+
+
+        if ((await this.getCoinbase()).height != parentHeight + 1){
           throw new AnnotatedError('INVALID_BLOCK_COINBASE', `Block ${this.blockid} has invalid block height relative to previous block`)
         }
 
-        if ((await this.toNetworkObject()).created <= (await parentBlock.toNetworkObject()).created || (await this.toNetworkObject()).created >= Math.floor(Date.now() / 1000)){
+        if ((this.toNetworkObject()).created <= (parentBlock.toNetworkObject()).created || (this.toNetworkObject()).created >= Math.floor(Date.now() / 1000)){
           throw new AnnotatedError('INVALID_BLOCK_TIMESTAMP', `Block ${this.blockid} has invalid block timestamp`)
         }
 

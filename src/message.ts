@@ -159,7 +159,7 @@ export const Message = Union(
   HelloMessage,
   GetPeersMessage, PeersMessage,
   IHaveObjectMessage, GetObjectMessage, ObjectMessage,
+  ErrorMessage,
   GetChainTipMessage, ChainTipMessage
-  ErrorMessage
 )
 export type MessageType = Static<typeof Message>
