@@ -6,11 +6,13 @@ import { Messages,
          HelloMessage,
          PeersMessage, GetPeersMessage,
          IHaveObjectMessage, GetObjectMessage, ObjectMessage,
+         GetChainTipMessage, ChainTipMessage,
          ErrorMessage,
          MessageType,
          HelloMessageType,
          PeersMessageType, GetPeersMessageType,
          IHaveObjectMessageType, GetObjectMessageType, ObjectMessageType,
+         GetChainTipMessageType, ChainTipMessageType,
          ErrorMessageType,
          AnnotatedError
         } from './message'
@@ -116,7 +118,7 @@ export class Peer {
     if (!Message.guard(msg)) {
       const validation = Message.validate(msg)
       return await this.fatalError(new AnnotatedError(
-        'INVALID_FORMAT', 
+        'INVALID_FORMAT',
         `The received message does not match one of the known message formats: ${message}
          Validation error: ${JSON.stringify(validation)}`
       )
@@ -182,6 +184,10 @@ export class Peer {
       return
     }
     await this.sendObject(obj)
+  }
+  async onMessageGetChainTip(msg: GetChainTipMessageType) {
+  }
+  async onMessageChainTip(msg: ChainTipMessageType) {
   }
   async onMessageObject(msg: ObjectMessageType) {
     const objectid: ObjectId = objectManager.id(msg.object)

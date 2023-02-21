@@ -127,6 +127,17 @@ export const IHaveObjectMessage = Record({
 })
 export type IHaveObjectMessageType = Static<typeof IHaveObjectMessage>
 
+export const GetChainTipMessage = Record({
+  type: Literal('getchaintip')
+})
+export type GetChainTipMessageType = Static<typeof GetChainTipMessage>
+
+export const ChainTipMessage = Record({
+  type: Literal('chaintip'),
+  objectid: Hash
+})
+export type ChainTipMessageType = Static<typeof ChainTipMessage>
+
 export const ObjectTxOrBlock = Union(TransactionObject, BlockObject)
 export type ObjectType = Static<typeof ObjectTxOrBlock>
 
@@ -141,12 +152,14 @@ export const Messages = [
   HelloMessage,
   GetPeersMessage, PeersMessage,
   IHaveObjectMessage, GetObjectMessage, ObjectMessage,
+  GetChainTipMessage, ChainTipMessage,
   ErrorMessage
 ]
 export const Message = Union(
   HelloMessage,
   GetPeersMessage, PeersMessage,
   IHaveObjectMessage, GetObjectMessage, ObjectMessage,
+  GetChainTipMessage, ChainTipMessage
   ErrorMessage
 )
 export type MessageType = Static<typeof Message>
