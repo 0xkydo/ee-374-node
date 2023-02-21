@@ -9,8 +9,8 @@ const MAX_BUFFER_SIZE = 100 * 1024 // 100 kB
 
 class Network {
   peers: Peer[] = []
-  latestChainTip: string;
-  latestBlockHeight: number;
+  latestChainTip: string = '';
+  latestBlockHeight: number = 0;
 
   async init(bindPort: number, bindIP: string) {
     await peerManager.load()
@@ -52,16 +52,16 @@ class Network {
     }
   }
   getChainTip(){
-    return latestChainTip;
+    return this.latestChainTip;
   }
   getBlockHeight(){
-    return latestBlockHeight;
+    return this.latestBlockHeight;
   }
   setChainTip(newChainTip: string){
-    latestChainTip = newChainTip;
+    this.latestChainTip = newChainTip;
   }
   setBlockHeight(newBlockHeight: number){
-    latestBlockHeight = newBlockHeight;
+    this.latestBlockHeight = newBlockHeight;
   }
 }
 
