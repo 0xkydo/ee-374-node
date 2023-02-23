@@ -6,16 +6,13 @@ import { Messages,
          HelloMessage,
          PeersMessage, GetPeersMessage,
          IHaveObjectMessage, GetObjectMessage, ObjectMessage,
-         GetChainTipMessage, ChainTipMessage,
          ErrorMessage,
          MessageType,
          HelloMessageType,
          PeersMessageType, GetPeersMessageType,
          IHaveObjectMessageType, GetObjectMessageType, ObjectMessageType,
-         GetChainTipMessageType, ChainTipMessageType,
          ErrorMessageType,
-         AnnotatedError,
-         BlockObject
+         AnnotatedError
         } from './message'
 import { peerManager } from './peermanager'
 import { canonicalize } from 'json-canonicalize'
@@ -24,7 +21,6 @@ import { network } from './network'
 import { ObjectId } from './object'
 import { Block } from './block'
 import { Transaction } from './transaction'
-import { delay } from './promise'
 
 const VERSION = '0.9.0'
 const NAME = 'Malibu (pset3)'
@@ -56,7 +52,6 @@ export class Peer {
       peers: [...peerManager.knownPeers]
     })
   }
-
   async sendIHaveObject(obj: any) {
     this.sendMessage({
       type: 'ihaveobject',
@@ -73,11 +68,6 @@ export class Peer {
     this.sendMessage({
       type: 'getobject',
       objectid: objid
-    })
-  }
-  async sendGetChainTip() {
-    this.sendMessage({
-      type: 'getchaintip'
     })
   }
   async sendError(err: AnnotatedError) {
@@ -107,10 +97,7 @@ export class Peer {
     this.active = true
     await this.sendHello()
     await this.sendGetPeers()
-    await this.sendGetChainTip()
   }
-
-
   async onTimeout() {
     return await this.fatalError(new AnnotatedError('INVALID_FORMAT', 'Timed out before message was complete'))
   }
@@ -129,7 +116,7 @@ export class Peer {
     if (!Message.guard(msg)) {
       const validation = Message.validate(msg)
       return await this.fatalError(new AnnotatedError(
-        'INVALID_FORMAT',
+        'INVALID_FORMAT', 
         `The received message does not match one of the known message formats: ${message}
          Validation error: ${JSON.stringify(validation)}`
       )
@@ -150,9 +137,7 @@ export class Peer {
       this.onMessageIHaveObject.bind(this),
       this.onMessageGetObject.bind(this),
       this.onMessageObject.bind(this),
-      this.onMessageError.bind(this),
-      this.onMessageGetChainTip.bind(this),
-      this.onMessageChainTip.bind(this)
+      this.onMessageError.bind(this)
     )(msg)
   }
   async onMessageHello(msg: HelloMessageType) {
@@ -198,46 +183,6 @@ export class Peer {
     }
     await this.sendObject(obj)
   }
-  async onMessageGetChainTip(msg: GetChainTipMessageType) {
-    // return current chaintip.
-    this.sendMessage({
-      type: 'chaintip',
-      blockid: network.getChainTip(),
-    })
-  }
-  async onMessageChainTip(msg: ChainTipMessageType) {
-    // set current chain tip to msg.
-    let instance: Block | Transaction;
-    try {
-      let exists = await objectManager.exists(msg.blockid)
-      var obj;
-
-      if(exists){
-        obj = await objectManager.get(msg.blockid);
-      }else{
-        await this.sendGetObject(msg.blockid);
-        await delay(1000);
-        obj = await objectManager.get(msg.blockid);
-      }
-
-      instance = await objectManager.validate(obj, this);
-      if(BlockObject.guard(instance)){
-        let currHeight = (await (instance as Block).getCoinbase()).height;
-        if (currHeight === null)
-          currHeight = 0
-
-        if(currHeight > network.getBlockHeight()){
-          network.setBlockHeight(currHeight)
-          network.setChainTip((instance as Block).blockid)
-        }
-      }
-    }
-    catch (e: any) {
-      this.sendError(e)
-      return
-    }
-  }
-  
   async onMessageObject(msg: ObjectMessageType) {
     const objectid: ObjectId = objectManager.id(msg.object)
     let known: boolean = false
@@ -259,17 +204,6 @@ export class Peer {
     let instance: Block | Transaction;
     try {
       instance = await objectManager.validate(msg.object, this)
-      if(BlockObject.guard(instance)){
-        let currHeight = (await (instance as Block).getCoinbase()).height;
-
-        if (currHeight === null)
-          currHeight = 0
-
-        if(currHeight > network.getBlockHeight()){
-          network.setBlockHeight(currHeight)
-          network.setChainTip((instance as Block).blockid)
-        }
-      }
     }
     catch (e: any) {
       this.sendError(e)

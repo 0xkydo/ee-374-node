@@ -19,10 +19,11 @@
     "json-canonicalize": "^1.0.4",
     "level-ts": "^2.1.0",
     "net": "^1.0.2",
+    "noble-ed25519": "^1.2.6",
     "node-fetch": "^2.6.8",
     "runtypes": "^6.5.1",
     "semver": "^7.3.5",
-    "winston": "^3.8.2"
+    "winston": "^3.6.0"
   },
   "devDependencies": {
     "@types/blake2": "^4.0.1",

@@ -216,15 +216,6 @@ class Block {
                     if (parentBlock === null) {
                         throw new message_1.AnnotatedError('UNFINDABLE_OBJECT', `Parent block of block ${this.blockid} was null`);
                     }
-                    let parentHeight = (yield parentBlock.getCoinbase()).height;
-                    if (parentHeight == null)
-                        parentHeight = 0;
-                    if ((yield this.getCoinbase()).height != parentHeight + 1) {
-                        throw new message_1.AnnotatedError('INVALID_BLOCK_COINBASE', `Block ${this.blockid} has invalid block height relative to previous block`);
-                    }
-                    if ((this.toNetworkObject()).created <= (parentBlock.toNetworkObject()).created || (this.toNetworkObject()).created >= Math.floor(Date.now() / 1000)) {
-                        throw new message_1.AnnotatedError('INVALID_BLOCK_TIMESTAMP', `Block ${this.blockid} has invalid block timestamp`);
-                    }
                     // this block's starting state is the previous block's ending state
                     stateBefore = yield parentBlock.loadStateAfter();
                     logger_1.logger.debug(`Loaded state before block ${this.blockid}`);
