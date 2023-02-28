@@ -1,7 +1,8 @@
 import { Literal,
          Record, Array, Union,
          String, Number,
-         Static, Null, Optional } from 'runtypes'
+         Static, Null, Unknown, Optional } from 'runtypes'
+import { logger } from './logger'
 
 const Hash = String.withConstraint(s => /^[0-9a-f]{64}$/.test(s))
 const Sig = String.withConstraint(s => /^[0-9a-f]{128}$/.test(s))
@@ -19,7 +20,8 @@ const ErrorChoices = Union(
   Literal('INVALID_TX_CONSERVATION'),
   Literal('INVALID_BLOCK_COINBASE'),
   Literal('INVALID_BLOCK_TIMESTAMP'),
-  Literal('INVALID_BLOCK_POW')
+  Literal('INVALID_BLOCK_POW'),
+  Literal('INVALID_GENESIS')
 )
 
 export const ErrorMessage = Record({
@@ -136,17 +138,29 @@ export const ObjectMessage = Record({
 })
 export type ObjectMessageType = Static<typeof ObjectMessage>
 
+export const GetChainTipMessage = Record({
+  type: Literal('getchaintip')
+})
+export type GetChainTipMessageType = Static<typeof GetChainTipMessage>
+
+export const ChainTipMessage = Record({
+  type: Literal('chaintip'),
+  blockid: Hash
+})
+export type ChainTipMessageType = Static<typeof ChainTipMessage>
 
 export const Messages = [
   HelloMessage,
   GetPeersMessage, PeersMessage,
   IHaveObjectMessage, GetObjectMessage, ObjectMessage,
+  GetChainTipMessage, ChainTipMessage,
   ErrorMessage
 ]
 export const Message = Union(
   HelloMessage,
   GetPeersMessage, PeersMessage,
   IHaveObjectMessage, GetObjectMessage, ObjectMessage,
+  GetChainTipMessage, ChainTipMessage,
   ErrorMessage
 )
 export type MessageType = Static<typeof Message>

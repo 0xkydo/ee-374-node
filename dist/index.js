@@ -11,12 +11,14 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 Object.defineProperty(exports, "__esModule", { value: true });
 const logger_1 = require("./logger");
 const network_1 = require("./network");
+const chain_1 = require("./chain");
 const BIND_PORT = 18018;
 const BIND_IP = '0.0.0.0';
 logger_1.logger.info(`Malibu - A Marabu node`);
 logger_1.logger.info(`Dionysis Zindros <dionyziz@stanford.edu>`);
 function main() {
     return __awaiter(this, void 0, void 0, function* () {
+        yield chain_1.chainManager.init();
         network_1.network.init(BIND_PORT, BIND_IP);
     });
 }

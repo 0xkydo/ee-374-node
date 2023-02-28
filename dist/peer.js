@@ -20,8 +20,9 @@ const peermanager_1 = require("./peermanager");
 const json_canonicalize_1 = require("json-canonicalize");
 const object_1 = require("./object");
 const network_1 = require("./network");
+const chain_1 = require("./chain");
 const VERSION = '0.9.0';
-const NAME = 'Malibu (pset3)';
+const NAME = 'Malibu (pset4)';
 // Number of peers that each peer is allowed to report to us
 const MAX_PEERS_PER_PEER = 30;
 class Peer {
@@ -73,6 +74,21 @@ class Peer {
             });
         });
     }
+    sendGetChainTip() {
+        return __awaiter(this, void 0, void 0, function* () {
+            this.sendMessage({
+                type: 'getchaintip'
+            });
+        });
+    }
+    sendChainTip(blockid) {
+        return __awaiter(this, void 0, void 0, function* () {
+            this.sendMessage({
+                type: 'chaintip',
+                blockid
+            });
+        });
+    }
     sendError(err) {
         return __awaiter(this, void 0, void 0, function* () {
             try {
@@ -107,6 +123,7 @@ class Peer {
             this.active = true;
             yield this.sendHello();
             yield this.sendGetPeers();
+            yield this.sendGetChainTip();
         });
     }
     onTimeout() {
@@ -138,7 +155,7 @@ class Peer {
             }
             message_1.Message.match(() => __awaiter(this, void 0, void 0, function* () {
                 return yield this.fatalError(new message_1.AnnotatedError('INVALID_HANDSHAKE', `Received a second "hello" message, even though handshake is completed`));
-            }), this.onMessageGetPeers.bind(this), this.onMessagePeers.bind(this), this.onMessageIHaveObject.bind(this), this.onMessageGetObject.bind(this), this.onMessageObject.bind(this), this.onMessageError.bind(this))(msg);
+            }), this.onMessageGetPeers.bind(this), this.onMessagePeers.bind(this), this.onMessageIHaveObject.bind(this), this.onMessageGetObject.bind(this), this.onMessageObject.bind(this), this.onMessageGetChainTip.bind(this), this.onMessageChainTip.bind(this), this.onMessageError.bind(this))(msg);
         });
     }
     onMessageHello(msg) {
@@ -170,7 +187,7 @@ class Peer {
     onMessageIHaveObject(msg) {
         return __awaiter(this, void 0, void 0, function* () {
             this.info(`Peer claims knowledge of: ${msg.objectid}`);
-            if (!(yield object_1.db.exists(msg.objectid))) {
+            if (!(yield object_1.objectManager.exists(msg.objectid))) {
                 this.info(`Object ${msg.objectid} discovered`);
                 yield this.sendGetObject(msg.objectid);
             }
@@ -220,6 +237,23 @@ class Peer {
                     objectid
                 });
             }
+        });
+    }
+    onMessageGetChainTip(msg) {
+        return __awaiter(this, void 0, void 0, function* () {
+            if (chain_1.chainManager.longestChainTip === null) {
+                this.warn(`Chain was not initialized when a peer requested it`);
+                return;
+            }
+            this.sendChainTip(chain_1.chainManager.longestChainTip.blockid);
+        });
+    }
+    onMessageChainTip(msg) {
+        return __awaiter(this, void 0, void 0, function* () {
+            if (yield object_1.objectManager.exists(msg.blockid)) {
+                return;
+            }
+            this.sendGetObject(msg.blockid);
         });
     }
     onMessageError(msg) {

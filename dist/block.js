@@ -12,7 +12,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.Block = void 0;
+exports.Block = exports.blockManager = exports.BlockManager = void 0;
 const message_1 = require("./message");
 const hash_1 = require("./crypto/hash");
 const json_canonicalize_1 = require("json-canonicalize");
@@ -21,6 +21,8 @@ const util_1 = __importDefault(require("util"));
 const utxo_1 = require("./utxo");
 const logger_1 = require("./logger");
 const transaction_1 = require("./transaction");
+const chain_1 = require("./chain");
+const promise_1 = require("./promise");
 const TARGET = '00000000abc00000000000000000000000000000000000000000000000000000';
 const GENESIS = {
     T: TARGET,
@@ -34,13 +36,40 @@ const GENESIS = {
 };
 const BU = 10 ** 12;
 const BLOCK_REWARD = 50 * BU;
+class BlockManager {
+    constructor() {
+        this.deferredValidations = {};
+    }
+}
+exports.BlockManager = BlockManager;
+exports.blockManager = new BlockManager();
 class Block {
+    static makeGenesis() {
+        return __awaiter(this, void 0, void 0, function* () {
+            const genesis = yield Block.fromNetworkObject(GENESIS);
+            genesis.valid = true;
+            genesis.stateAfter = new utxo_1.UTXOSet(new Set());
+            genesis.height = 0;
+            yield genesis.save();
+            if (!(yield object_1.objectManager.exists(genesis.blockid))) {
+                yield object_1.objectManager.put(genesis.toNetworkObject());
+            }
+            return genesis;
+        });
+    }
     static fromNetworkObject(object) {
         return __awaiter(this, void 0, void 0, function* () {
-            return new Block(object.previd, object.txids, object.nonce, object.T, object.created, object.miner, object.note, object.studentids);
+            const b = new Block(object.previd, object.txids, object.nonce, object.T, object.created, object.miner, object.note, object.studentids);
+            // see if we can load block metadata from cache
+            try {
+                yield b.load();
+            }
+            catch (_a) { } // block metadata not cached
+            return b;
         });
     }
     constructor(previd, txids, nonce, T, created, miner, note, studentids) {
+        this.valid = false;
         this.previd = previd;
         this.txids = txids;
         this.nonce = nonce;
@@ -50,16 +79,6 @@ class Block {
         this.note = note;
         this.studentids = studentids;
         this.blockid = (0, hash_1.hash)((0, json_canonicalize_1.canonicalize)(this.toNetworkObject()));
-    }
-    loadStateAfter() {
-        return __awaiter(this, void 0, void 0, function* () {
-            try {
-                return new utxo_1.UTXOSet(new Set(yield object_1.db.get(`blockutxo:${this.blockid}`)));
-            }
-            catch (e) {
-                return;
-            }
-        });
     }
     getCoinbase() {
         return __awaiter(this, void 0, void 0, function* () {
@@ -133,7 +152,7 @@ class Block {
             return txs;
         });
     }
-    validateTx(peer, stateBefore) {
+    validateTx(peer, stateBefore, height) {
         return __awaiter(this, void 0, void 0, function* () {
             logger_1.logger.debug(`Validating ${this.txids.length} transactions of block ${this.blockid}`);
             const stateAfter = stateBefore.copy();
@@ -161,8 +180,12 @@ class Block {
                     throw new message_1.AnnotatedError('INVALID_BLOCK_COINBASE', `Coinbase transaction does not respect macroeconomic policy. `
                         + `Coinbase output was ${coinbase.outputs[0].value}, while reward is ${BLOCK_REWARD} and fees were ${fees}.`);
                 }
+                if (coinbase.height !== height) {
+                    throw new message_1.AnnotatedError('INVALID_BLOCK_COINBASE', `Coinbase transaction ${coinbase.txid} of block ${this.blockid} indicates height ${coinbase.height}, `
+                        + `while the block has height ${height}.`);
+                }
             }
-            yield object_1.db.put(`blockutxo:${this.blockid}`, Array.from(stateAfter.outpoints));
+            this.stateAfter = stateAfter;
             logger_1.logger.debug(`UTXO state of block ${this.blockid} cached: ${JSON.stringify(Array.from(stateAfter.outpoints))}`);
         });
     }
@@ -180,7 +203,16 @@ class Block {
                     throw new message_1.AnnotatedError('UNFINDABLE_OBJECT', `Got parent of block ${this.blockid}, but it was not of BlockObject type; rejecting block.`);
                 }
                 parentBlock = yield Block.fromNetworkObject(parentObject);
-                yield parentBlock.validate(peer);
+                try {
+                    // try to load cached block information; this should have been cached
+                    // as soon as the block was retrieved from the network and validated
+                    yield parentBlock.load();
+                    logger_1.logger.debug(`Parent block ${this.previd} of the block ${this.blockid} is already cached.`);
+                }
+                catch (_a) {
+                    logger_1.logger.debug(`Awaiting validation of the parent block ${this.previd} of the block ${this.blockid}.`);
+                    yield parentBlock.validate(peer);
+                }
             }
             catch (e) {
                 throw new message_1.AnnotatedError('UNFINDABLE_OBJECT', `Retrieval of block parent for block ${this.blockid} failed; rejecting block: ${e.message}`);
@@ -191,6 +223,16 @@ class Block {
     validate(peer) {
         return __awaiter(this, void 0, void 0, function* () {
             logger_1.logger.debug(`Validating block ${this.blockid}`);
+            if (exports.blockManager.deferredValidations[this.blockid] !== undefined) {
+                logger_1.logger.debug(`Block ${this.blockid} is already pending validation. Waiting.`);
+                const result = yield exports.blockManager.deferredValidations[this.blockid].promise;
+                if (!result[0]) {
+                    throw new message_1.AnnotatedError(result[1], `Block validation failure received through propagation.`);
+                }
+                yield this.load();
+                return;
+            }
+            const deferred = exports.blockManager.deferredValidations[this.blockid] = new promise_1.Deferred();
             try {
                 if (this.T !== TARGET) {
                     throw new message_1.AnnotatedError('INVALID_FORMAT', `Block ${this.blockid} does not specify the fixed target ${TARGET}, but uses target ${this.T} instead.`);
@@ -203,8 +245,9 @@ class Block {
                 let parentBlock = null;
                 let stateBefore;
                 if (this.isGenesis()) {
+                    this.height = 0;
                     if (!util_1.default.isDeepStrictEqual(this.toNetworkObject(), GENESIS)) {
-                        throw new message_1.AnnotatedError('INVALID_FORMAT', `Invalid genesis block ${this.blockid}: ${JSON.stringify(this.toNetworkObject())}`);
+                        throw new message_1.AnnotatedError('INVALID_GENESIS', `Invalid genesis block ${this.blockid}: ${JSON.stringify(this.toNetworkObject())}`);
                     }
                     logger_1.logger.debug(`Block ${this.blockid} is genesis block`);
                     // genesis state
@@ -216,8 +259,24 @@ class Block {
                     if (parentBlock === null) {
                         throw new message_1.AnnotatedError('UNFINDABLE_OBJECT', `Parent block of block ${this.blockid} was null`);
                     }
+                    logger_1.logger.debug(`Ancestry validation of ${this.blockid} successful.`);
+                    const parentHeight = parentBlock.height;
+                    if (parentHeight === undefined) {
+                        throw new message_1.AnnotatedError('UNFINDABLE_OBJECT', `Parent block ${parentBlock.blockid} of block ${this.blockid} has no known height`);
+                    }
+                    if (parentBlock.created >= this.created) {
+                        throw new message_1.AnnotatedError('INVALID_BLOCK_TIMESTAMP', `Parent block ${parentBlock.blockid} created at ${parentBlock.created} has future timestamp of `
+                            + `block ${this.blockid} created at ${this.created}.`);
+                    }
+                    const currentUNIXtimestamp = Math.floor(new Date().getTime() / 1000);
+                    if (this.created > currentUNIXtimestamp) {
+                        throw new message_1.AnnotatedError('INVALID_BLOCK_TIMESTAMP', `Block ${this.blockid} has a timestamp ${this.created} in the future. `
+                            + `Current time is ${currentUNIXtimestamp}.`);
+                    }
+                    this.height = parentHeight + 1;
+                    logger_1.logger.debug(`Block ${this.blockid} has height ${this.height}.`);
                     // this block's starting state is the previous block's ending state
-                    stateBefore = yield parentBlock.loadStateAfter();
+                    stateBefore = parentBlock.stateAfter;
                     logger_1.logger.debug(`Loaded state before block ${this.blockid}`);
                 }
                 logger_1.logger.debug(`Block ${this.blockid} has valid ancestry`);
@@ -226,12 +285,46 @@ class Block {
                         + `so we cannot calculate the state of the current block with blockid = ${this.blockid}`);
                 }
                 logger_1.logger.debug(`State before block ${this.blockid} is ${stateBefore}`);
-                yield this.validateTx(peer, stateBefore);
+                yield this.validateTx(peer, stateBefore, this.height);
                 logger_1.logger.debug(`Block ${this.blockid} has valid transactions`);
+                this.valid = true;
+                try {
+                    yield this.save();
+                    yield chain_1.chainManager.onValidBlockArrival(this);
+                }
+                catch (e) {
+                    throw new message_1.AnnotatedError('INTERNAL_ERROR', 'Something went wrong is block saving or state calculations.');
+                }
             }
             catch (e) {
+                deferred.resolve([false, e.name]);
+                delete exports.blockManager.deferredValidations[this.blockid];
                 throw e;
             }
+            deferred.resolve([true, '']);
+            delete exports.blockManager.deferredValidations[this.blockid];
+        });
+    }
+    save() {
+        return __awaiter(this, void 0, void 0, function* () {
+            if (this.stateAfter === undefined) {
+                throw new Error(`Cannot save block ${this.blockid} with uncalculate state`);
+            }
+            yield object_1.db.put(`blockinfo:${this.blockid}`, {
+                height: this.height,
+                stateAfterOutpoints: Array.from(this.stateAfter.outpoints)
+            });
+            logger_1.logger.debug(`Stored valid block ${this.blockid} metadata.`);
+        });
+    }
+    load() {
+        return __awaiter(this, void 0, void 0, function* () {
+            logger_1.logger.debug(`Loading block ${this.blockid} metadata.`);
+            const { height, stateAfterOutpoints } = yield object_1.db.get(`blockinfo:${this.blockid}`);
+            logger_1.logger.debug(`Block ${this.blockid} metadata loaded from database.`);
+            this.height = height;
+            this.stateAfter = new utxo_1.UTXOSet(new Set(stateAfterOutpoints));
+            this.valid = true;
         });
     }
 }

@@ -4,6 +4,7 @@ import { TransactionInputObjectType,
          TransactionOutputObjectType,
          OutpointObjectType,
          SpendingTransactionObject, 
+         ErrorMessageType,
          AnnotatedError} from './message'
 import { PublicKey, Signature } from './crypto/signature'
 import { canonicalize } from 'json-canonicalize'

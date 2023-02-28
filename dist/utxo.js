@@ -21,7 +21,7 @@ class UTXOSet {
     copy() {
         return new UTXOSet(new Set(Array.from(this.outpoints)));
     }
-    apply(tx, idx, block) {
+    apply(tx) {
         return __awaiter(this, void 0, void 0, function* () {
             logger_1.logger.debug(`Applying transaction ${tx.txid} to UTXO set`);
             logger_1.logger.debug(`Transaction ${tx.txid} has fees ${tx.fees}`);
@@ -63,7 +63,7 @@ class UTXOSet {
             let idx = 0;
             for (const tx of txs) {
                 logger_1.logger.debug(`Applying transaction ${tx.txid} to state`);
-                yield this.apply(tx, idx, block);
+                yield this.apply(tx);
                 logger_1.logger.debug(`State after transaction application is: ${this}`);
                 ++idx;
             }

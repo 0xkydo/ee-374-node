@@ -1,13 +1,13 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.Message = exports.Messages = exports.ObjectMessage = exports.ObjectTxOrBlock = exports.IHaveObjectMessage = exports.GetObjectMessage = exports.PeersMessage = exports.GetPeersMessage = exports.HelloMessage = exports.BlockObject = exports.HumanReadable = exports.TransactionObject = exports.SpendingTransactionObject = exports.CoinbaseTransactionObject = exports.TransactionOutputObject = exports.TransactionInputObject = exports.OutpointObject = exports.AnnotatedError = exports.ErrorMessage = void 0;
+exports.Message = exports.Messages = exports.ChainTipMessage = exports.GetChainTipMessage = exports.ObjectMessage = exports.ObjectTxOrBlock = exports.IHaveObjectMessage = exports.GetObjectMessage = exports.PeersMessage = exports.GetPeersMessage = exports.HelloMessage = exports.BlockObject = exports.HumanReadable = exports.TransactionObject = exports.SpendingTransactionObject = exports.CoinbaseTransactionObject = exports.TransactionOutputObject = exports.TransactionInputObject = exports.OutpointObject = exports.AnnotatedError = exports.ErrorMessage = void 0;
 const runtypes_1 = require("runtypes");
 const Hash = runtypes_1.String.withConstraint(s => /^[0-9a-f]{64}$/.test(s));
 const Sig = runtypes_1.String.withConstraint(s => /^[0-9a-f]{128}$/.test(s));
 const PK = runtypes_1.String.withConstraint(s => /^[0-9a-f]{64}$/.test(s));
 const NonNegative = runtypes_1.Number.withConstraint(n => n >= 0);
 const Coins = NonNegative;
-const ErrorChoices = (0, runtypes_1.Union)((0, runtypes_1.Literal)('INTERNAL_ERROR'), (0, runtypes_1.Literal)('INVALID_FORMAT'), (0, runtypes_1.Literal)('UNKNOWN_OBJECT'), (0, runtypes_1.Literal)('UNFINDABLE_OBJECT'), (0, runtypes_1.Literal)('INVALID_HANDSHAKE'), (0, runtypes_1.Literal)('INVALID_TX_OUTPOINT'), (0, runtypes_1.Literal)('INVALID_TX_SIGNATURE'), (0, runtypes_1.Literal)('INVALID_TX_CONSERVATION'), (0, runtypes_1.Literal)('INVALID_BLOCK_COINBASE'), (0, runtypes_1.Literal)('INVALID_BLOCK_TIMESTAMP'), (0, runtypes_1.Literal)('INVALID_BLOCK_POW'));
+const ErrorChoices = (0, runtypes_1.Union)((0, runtypes_1.Literal)('INTERNAL_ERROR'), (0, runtypes_1.Literal)('INVALID_FORMAT'), (0, runtypes_1.Literal)('UNKNOWN_OBJECT'), (0, runtypes_1.Literal)('UNFINDABLE_OBJECT'), (0, runtypes_1.Literal)('INVALID_HANDSHAKE'), (0, runtypes_1.Literal)('INVALID_TX_OUTPOINT'), (0, runtypes_1.Literal)('INVALID_TX_SIGNATURE'), (0, runtypes_1.Literal)('INVALID_TX_CONSERVATION'), (0, runtypes_1.Literal)('INVALID_BLOCK_COINBASE'), (0, runtypes_1.Literal)('INVALID_BLOCK_TIMESTAMP'), (0, runtypes_1.Literal)('INVALID_BLOCK_POW'), (0, runtypes_1.Literal)('INVALID_GENESIS'));
 exports.ErrorMessage = (0, runtypes_1.Record)({
     type: (0, runtypes_1.Literal)('error'),
     name: ErrorChoices,
@@ -93,10 +93,18 @@ exports.ObjectMessage = (0, runtypes_1.Record)({
     type: (0, runtypes_1.Literal)('object'),
     object: exports.ObjectTxOrBlock
 });
+exports.GetChainTipMessage = (0, runtypes_1.Record)({
+    type: (0, runtypes_1.Literal)('getchaintip')
+});
+exports.ChainTipMessage = (0, runtypes_1.Record)({
+    type: (0, runtypes_1.Literal)('chaintip'),
+    blockid: Hash
+});
 exports.Messages = [
     exports.HelloMessage,
     exports.GetPeersMessage, exports.PeersMessage,
     exports.IHaveObjectMessage, exports.GetObjectMessage, exports.ObjectMessage,
+    exports.GetChainTipMessage, exports.ChainTipMessage,
     exports.ErrorMessage
 ];
-exports.Message = (0, runtypes_1.Union)(exports.HelloMessage, exports.GetPeersMessage, exports.PeersMessage, exports.IHaveObjectMessage, exports.GetObjectMessage, exports.ObjectMessage, exports.ErrorMessage);
+exports.Message = (0, runtypes_1.Union)(exports.HelloMessage, exports.GetPeersMessage, exports.PeersMessage, exports.IHaveObjectMessage, exports.GetObjectMessage, exports.ObjectMessage, exports.GetChainTipMessage, exports.ChainTipMessage, exports.ErrorMessage);
