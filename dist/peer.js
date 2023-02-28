@@ -99,6 +99,10 @@ class Peer {
             }
         });
     }
+    sendGetMempool() {
+        return __awaiter(this, void 0, void 0, function* () {
+        });
+    }
     sendMessage(obj) {
         const message = (0, json_canonicalize_1.canonicalize)(obj);
         this.debug(`Sending message: ${message}`);
@@ -124,6 +128,7 @@ class Peer {
             yield this.sendHello();
             yield this.sendGetPeers();
             yield this.sendGetChainTip();
+            yield this.sendGetMempool();
         });
     }
     onTimeout() {

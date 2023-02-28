@@ -85,6 +85,11 @@ export class Peer {
       this.sendMessage(new AnnotatedError('INTERNAL_ERROR', `Failed to serialize error message: ${error}`).getJSON())
     }
   }
+  async sendGetMempool(){
+    this.sendMessage({
+      type: 'getmempool'
+    })
+  }
   sendMessage(obj: object) {
     const message: string = canonicalize(obj)
 
@@ -106,6 +111,7 @@ export class Peer {
     await this.sendHello()
     await this.sendGetPeers()
     await this.sendGetChainTip()
+    await this.sendGetMempool()
   }
   async onTimeout() {
     return await this.fatalError(new AnnotatedError('INVALID_FORMAT', 'Timed out before message was complete'))
@@ -148,6 +154,8 @@ export class Peer {
       this.onMessageObject.bind(this),
       this.onMessageGetChainTip.bind(this),
       this.onMessageChainTip.bind(this),
+      this.onMessageGetMempool.bind(this),
+      this.onMessageMempool.bind(this),
       this.onMessageError.bind(this)
     )(msg)
   }
