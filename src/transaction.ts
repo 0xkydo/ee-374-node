@@ -199,9 +199,13 @@ export class Transaction {
     this.fees = sumInputs - sumOutputs
     logger.debug(`Transaction ${this.txid} pays fees ${this.fees}`)
 
-    mempool.addTxnToMempool(this)
-
     logger.debug(`Transaction ${this.txid} is valid`)
+
+    try {
+      await mempool.addTxnToMempool(this)
+    } catch (error) {
+      logger.debug(`${this.txid} cannot be added to the mempool.`)
+    }
   }
   inputsUnsigned() {
     return this.inputs.map(

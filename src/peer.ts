@@ -20,6 +20,7 @@ import { ObjectId } from './object'
 import { chainManager } from './chain'
 import { Block } from './block'
 import { Transaction } from './transaction'
+import { mempool } from './mempool'
 
 const VERSION = '0.9.0'
 const NAME = 'Malibu (pset4)'
@@ -163,10 +164,16 @@ export class Peer {
   }
   async onMessageGetMempool(msg: GetMempoolMessageType) {
 
+    this.sendMessage({
+      type:'mempool',
+      txids: mempool.mempool
+    })
+
   }
   async onMessageMempool(msg: MempoolMessageType) {
-    
-
+    for(const txid of msg.txids){
+      await objectManager.retrieve(txid,this)
+    }
   }
 
   async onMessageHello(msg: HelloMessageType) {

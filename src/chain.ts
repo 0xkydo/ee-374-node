@@ -26,7 +26,7 @@ class ChainManager {
       logger.debug(`New longest chain has height ${height} and tip ${block.blockid}`)
       this.longestChainHeight = height
       this.longestChainTip = block
-      mempool.updateBlockToMempool(block)
+      await mempool.updateBlockToMempool(block)
     }
   }
 }

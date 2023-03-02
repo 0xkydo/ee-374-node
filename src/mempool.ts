@@ -9,7 +9,7 @@ import { Block } from "./block";
 class Mempool {
 
   mempoolUTXO: UTXOSet = new UTXOSet(new Set<string>())
-  mempool: Transaction[] = []
+  mempool: string[] = []
   allTranscations: Transaction[] = []
 
   async updateBlockToMempool(_block: Block) {
@@ -24,15 +24,16 @@ class Mempool {
     for (const txn of this.allTranscations) {
       try {
         await this.mempoolUTXO.apply(txn)
-        this.mempool.push(txn)
+        this.mempool.push(txn.txid)
       } catch { }
     }
   }
 
   async addTxnToMempool(_transaction: Transaction) {
-    await this.mempoolUTXO.apply(_transaction)
-    this.mempool.push(_transaction)
     this.allTranscations.push(_transaction)
+    await this.mempoolUTXO.apply(_transaction)
+    this.mempool.push(_transaction.txid)
+    logger.debug(`${_transaction.txid} added to the mempool.`)
   }
 
 }
