@@ -11,6 +11,8 @@ import { canonicalize } from 'json-canonicalize'
 import { ver } from './crypto/signature'
 import { logger } from './logger'
 import { Block } from './block'
+import { hash } from './crypto/hash'
+import { mempool } from './mempool'
 
 export class Output {
   pubkey: PublicKey
@@ -153,11 +155,19 @@ export class Transaction {
       catch (e) {}
     }
 
+    let inputObjects: string[] = [];
+
     const inputValues = await Promise.all(
       this.inputs.map(async (input, i) => {
         if (blockCoinbase !== undefined && input.outpoint.txid === blockCoinbase.txid) {
           throw new AnnotatedError('INVALID_TX_OUTPOINT', `Transaction ${this.txid} is spending immature coinbase`)
         }
+
+        logger.debug(`Checking if ${this.txid} has used one outpoint more than once`)
+        if(this.txid in inputObjects){
+          throw new AnnotatedError('INVALID_FORMAT', 'Inputs used the same outpoint more than once.')
+        }
+        inputObjects.push(this.txid);
 
         const prevOutput = await input.outpoint.resolve()
         
@@ -188,6 +198,9 @@ export class Transaction {
     }
     this.fees = sumInputs - sumOutputs
     logger.debug(`Transaction ${this.txid} pays fees ${this.fees}`)
+
+    mempool.addTxnToMempool(this)
+
     logger.debug(`Transaction ${this.txid} is valid`)
   }
   inputsUnsigned() {

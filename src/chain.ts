@@ -1,5 +1,7 @@
 import { Block } from "./block";
 import { logger } from "./logger";
+import { mempool } from "./mempool";
+import { UTXOSet } from "./utxo";
 
 class ChainManager {
   longestChainHeight: number = 0
@@ -24,6 +26,7 @@ class ChainManager {
       logger.debug(`New longest chain has height ${height} and tip ${block.blockid}`)
       this.longestChainHeight = height
       this.longestChainTip = block
+      mempool.updateBlockToMempool(block)
     }
   }
 }

@@ -44,6 +44,18 @@ class BlockManager {
 exports.BlockManager = BlockManager;
 exports.blockManager = new BlockManager();
 class Block {
+    constructor(previd, txids, nonce, T, created, miner, note, studentids) {
+        this.valid = false;
+        this.previd = previd;
+        this.txids = txids;
+        this.nonce = nonce;
+        this.T = T;
+        this.created = created;
+        this.miner = miner;
+        this.note = note;
+        this.studentids = studentids;
+        this.blockid = (0, hash_1.hash)((0, json_canonicalize_1.canonicalize)(this.toNetworkObject()));
+    }
     static makeGenesis() {
         return __awaiter(this, void 0, void 0, function* () {
             const genesis = yield Block.fromNetworkObject(GENESIS);
@@ -67,18 +79,6 @@ class Block {
             catch (_a) { } // block metadata not cached
             return b;
         });
-    }
-    constructor(previd, txids, nonce, T, created, miner, note, studentids) {
-        this.valid = false;
-        this.previd = previd;
-        this.txids = txids;
-        this.nonce = nonce;
-        this.T = T;
-        this.created = created;
-        this.miner = miner;
-        this.note = note;
-        this.studentids = studentids;
-        this.blockid = (0, hash_1.hash)((0, json_canonicalize_1.canonicalize)(this.toNetworkObject()));
     }
     getCoinbase() {
         return __awaiter(this, void 0, void 0, function* () {

@@ -1,11 +1,7 @@
 "use strict";
 var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;
-    var desc = Object.getOwnPropertyDescriptor(m, k);
-    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
-      desc = { enumerable: true, get: function() { return m[k]; } };
-    }
-    Object.defineProperty(o, k2, desc);
+    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
 }) : (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;
     o[k2] = m[k];
@@ -77,17 +73,6 @@ class Network {
     }
 }
 class MessageSocket extends events_1.EventEmitter {
-    static createClient(peerAddr) {
-        const [host, portStr] = peerAddr.split(':');
-        const port = +portStr;
-        if (port < 0 || port > 65535) {
-            throw new Error('Invalid port');
-        }
-        const netSocket = new net.Socket();
-        const socket = new MessageSocket(netSocket, peerAddr);
-        netSocket.connect(port, host);
-        return socket;
-    }
     constructor(netSocket, peerAddr) {
         super();
         this.buffer = ''; // defragmentation buffer
@@ -114,6 +99,17 @@ class MessageSocket extends events_1.EventEmitter {
                 }, TIMEOUT_DELAY);
             }
         });
+    }
+    static createClient(peerAddr) {
+        const [host, portStr] = peerAddr.split(':');
+        const port = +portStr;
+        if (port < 0 || port > 65535) {
+            throw new Error('Invalid port');
+        }
+        const netSocket = new net.Socket();
+        const socket = new MessageSocket(netSocket, peerAddr);
+        netSocket.connect(port, host);
+        return socket;
     }
     sendMessage(message) {
         this.netSocket.write(`${message}\n`);

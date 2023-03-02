@@ -26,6 +26,19 @@ const NAME = 'Malibu (pset4)';
 // Number of peers that each peer is allowed to report to us
 const MAX_PEERS_PER_PEER = 30;
 class Peer {
+    constructor(socket, peerAddr) {
+        this.active = false;
+        this.handshakeCompleted = false;
+        this.socket = socket;
+        this.peerAddr = peerAddr;
+        socket.netSocket.on('connect', this.onConnect.bind(this));
+        socket.netSocket.on('error', err => {
+            this.warn(`Socket error: ${err}`);
+            this.fail();
+        });
+        socket.on('message', this.onMessage.bind(this));
+        socket.on('timeout', this.onTimeout.bind(this));
+    }
     sendHello() {
         return __awaiter(this, void 0, void 0, function* () {
             this.sendMessage({
@@ -101,6 +114,9 @@ class Peer {
     }
     sendGetMempool() {
         return __awaiter(this, void 0, void 0, function* () {
+            this.sendMessage({
+                type: 'getmempool'
+            });
         });
     }
     sendMessage(obj) {
@@ -160,7 +176,15 @@ class Peer {
             }
             message_1.Message.match(() => __awaiter(this, void 0, void 0, function* () {
                 return yield this.fatalError(new message_1.AnnotatedError('INVALID_HANDSHAKE', `Received a second "hello" message, even though handshake is completed`));
-            }), this.onMessageGetPeers.bind(this), this.onMessagePeers.bind(this), this.onMessageIHaveObject.bind(this), this.onMessageGetObject.bind(this), this.onMessageObject.bind(this), this.onMessageGetChainTip.bind(this), this.onMessageChainTip.bind(this), this.onMessageError.bind(this))(msg);
+            }), this.onMessageGetPeers.bind(this), this.onMessagePeers.bind(this), this.onMessageIHaveObject.bind(this), this.onMessageGetObject.bind(this), this.onMessageObject.bind(this), this.onMessageGetChainTip.bind(this), this.onMessageChainTip.bind(this), this.onMessageGetMempool.bind(this), this.onMessageMempool.bind(this), this.onMessageError.bind(this))(msg);
+        });
+    }
+    onMessageGetMempool(msg) {
+        return __awaiter(this, void 0, void 0, function* () {
+        });
+    }
+    onMessageMempool(msg) {
+        return __awaiter(this, void 0, void 0, function* () {
         });
     }
     onMessageHello(msg) {
@@ -277,19 +301,6 @@ class Peer {
     }
     debug(message, ...args) {
         this.log('debug', message, ...args);
-    }
-    constructor(socket, peerAddr) {
-        this.active = false;
-        this.handshakeCompleted = false;
-        this.socket = socket;
-        this.peerAddr = peerAddr;
-        socket.netSocket.on('connect', this.onConnect.bind(this));
-        socket.netSocket.on('error', err => {
-            this.warn(`Socket error: ${err}`);
-            this.fail();
-        });
-        socket.on('message', this.onMessage.bind(this));
-        socket.on('timeout', this.onTimeout.bind(this));
     }
 }
 exports.Peer = Peer;

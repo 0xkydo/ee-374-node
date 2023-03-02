@@ -8,7 +8,9 @@ import { Message,
          IHaveObjectMessageType, GetObjectMessageType, ObjectMessageType,
          GetChainTipMessageType, ChainTipMessageType,
          ErrorMessageType,
-         AnnotatedError
+         AnnotatedError,
+         GetMempoolMessageType,
+         MempoolMessageType
         } from './message'
 import { peerManager } from './peermanager'
 import { canonicalize } from 'json-canonicalize'
@@ -159,6 +161,14 @@ export class Peer {
       this.onMessageError.bind(this)
     )(msg)
   }
+  async onMessageGetMempool(msg: GetMempoolMessageType) {
+
+  }
+  async onMessageMempool(msg: MempoolMessageType) {
+    
+
+  }
+
   async onMessageHello(msg: HelloMessageType) {
     if (!semver.satisfies(msg.version, `^${VERSION}`)) {
       return await this.fatalError(new AnnotatedError('INVALID_FORMAT', `You sent an incorrect version (${msg.version}), which is not compatible with this node's version ${VERSION}.`))

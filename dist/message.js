@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.Message = exports.Messages = exports.ChainTipMessage = exports.GetChainTipMessage = exports.ObjectMessage = exports.ObjectTxOrBlock = exports.IHaveObjectMessage = exports.GetObjectMessage = exports.PeersMessage = exports.GetPeersMessage = exports.HelloMessage = exports.BlockObject = exports.HumanReadable = exports.TransactionObject = exports.SpendingTransactionObject = exports.CoinbaseTransactionObject = exports.TransactionOutputObject = exports.TransactionInputObject = exports.OutpointObject = exports.AnnotatedError = exports.ErrorMessage = void 0;
+exports.Message = exports.Messages = exports.MempoolMessage = exports.GetMempoolMessage = exports.ChainTipMessage = exports.GetChainTipMessage = exports.ObjectMessage = exports.ObjectTxOrBlock = exports.IHaveObjectMessage = exports.GetObjectMessage = exports.PeersMessage = exports.GetPeersMessage = exports.HelloMessage = exports.BlockObject = exports.HumanReadable = exports.TransactionObject = exports.SpendingTransactionObject = exports.CoinbaseTransactionObject = exports.TransactionOutputObject = exports.TransactionInputObject = exports.OutpointObject = exports.AnnotatedError = exports.ErrorMessage = void 0;
 const runtypes_1 = require("runtypes");
 const Hash = runtypes_1.String.withConstraint(s => /^[0-9a-f]{64}$/.test(s));
 const Sig = runtypes_1.String.withConstraint(s => /^[0-9a-f]{128}$/.test(s));
@@ -100,6 +100,13 @@ exports.ChainTipMessage = (0, runtypes_1.Record)({
     type: (0, runtypes_1.Literal)('chaintip'),
     blockid: Hash
 });
+exports.GetMempoolMessage = (0, runtypes_1.Record)({
+    type: (0, runtypes_1.Literal)('getmempool'),
+});
+exports.MempoolMessage = (0, runtypes_1.Record)({
+    type: (0, runtypes_1.Literal)('mempool'),
+    txids: (0, runtypes_1.Array)(Hash)
+});
 exports.Messages = [
     exports.HelloMessage,
     exports.GetPeersMessage, exports.PeersMessage,
@@ -107,4 +114,4 @@ exports.Messages = [
     exports.GetChainTipMessage, exports.ChainTipMessage,
     exports.ErrorMessage
 ];
-exports.Message = (0, runtypes_1.Union)(exports.HelloMessage, exports.GetPeersMessage, exports.PeersMessage, exports.IHaveObjectMessage, exports.GetObjectMessage, exports.ObjectMessage, exports.GetChainTipMessage, exports.ChainTipMessage, exports.ErrorMessage);
+exports.Message = (0, runtypes_1.Union)(exports.HelloMessage, exports.GetPeersMessage, exports.PeersMessage, exports.IHaveObjectMessage, exports.GetObjectMessage, exports.ObjectMessage, exports.GetChainTipMessage, exports.ChainTipMessage, exports.GetMempoolMessage, exports.MempoolMessage, exports.ErrorMessage);

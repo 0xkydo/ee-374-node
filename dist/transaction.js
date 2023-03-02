@@ -16,12 +16,12 @@ const json_canonicalize_1 = require("json-canonicalize");
 const signature_1 = require("./crypto/signature");
 const logger_1 = require("./logger");
 class Output {
-    static fromNetworkObject(outputMsg) {
-        return new Output(outputMsg.pubkey, outputMsg.value);
-    }
     constructor(pubkey, value) {
         this.pubkey = pubkey;
         this.value = value;
+    }
+    static fromNetworkObject(outputMsg) {
+        return new Output(outputMsg.pubkey, outputMsg.value);
     }
     toNetworkObject() {
         return {
@@ -32,12 +32,12 @@ class Output {
 }
 exports.Output = Output;
 class Outpoint {
-    static fromNetworkObject(outpoint) {
-        return new Outpoint(outpoint.txid, outpoint.index);
-    }
     constructor(txid, index) {
         this.txid = txid;
         this.index = index;
+    }
+    static fromNetworkObject(outpoint) {
+        return new Outpoint(outpoint.txid, outpoint.index);
     }
     resolve() {
         return __awaiter(this, void 0, void 0, function* () {
@@ -61,12 +61,12 @@ class Outpoint {
 }
 exports.Outpoint = Outpoint;
 class Input {
-    static fromNetworkObject(inputMsg) {
-        return new Input(Outpoint.fromNetworkObject(inputMsg.outpoint), inputMsg.sig);
-    }
     constructor(outpoint, sig = null) {
         this.outpoint = outpoint;
         this.sig = sig;
+    }
+    static fromNetworkObject(inputMsg) {
+        return new Input(Outpoint.fromNetworkObject(inputMsg.outpoint), inputMsg.sig);
     }
     toNetworkObject() {
         return {
@@ -80,6 +80,15 @@ class Input {
 }
 exports.Input = Input;
 class Transaction {
+    constructor(txid, inputs, outputs, height = null) {
+        this.inputs = [];
+        this.outputs = [];
+        this.height = null;
+        this.txid = txid;
+        this.inputs = inputs;
+        this.outputs = outputs;
+        this.height = height;
+    }
     static inputsFromNetworkObject(inputMsgs) {
         return inputMsgs.map(Input.fromNetworkObject);
     }
@@ -102,15 +111,6 @@ class Transaction {
         return __awaiter(this, void 0, void 0, function* () {
             return this.fromNetworkObject(yield object_1.objectManager.get(txid));
         });
-    }
-    constructor(txid, inputs, outputs, height = null) {
-        this.inputs = [];
-        this.outputs = [];
-        this.height = null;
-        this.txid = txid;
-        this.inputs = inputs;
-        this.outputs = outputs;
-        this.height = height;
     }
     isCoinbase() {
         return this.inputs.length === 0;
