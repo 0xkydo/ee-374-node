@@ -215,6 +215,25 @@ export class Block {
     this.stateAfter = stateAfter
     logger.debug(`UTXO state of block ${this.blockid} cached: ${JSON.stringify(Array.from(stateAfter.outpoints))}`)
   }
+  async loadParent(): Promise<Block | null> {
+    let parentBlock: Block
+
+    if (this.previd === null) {
+      return null
+    }
+    try {
+      const parentObject = await objectManager.get(this.previd)
+
+      if (!BlockObject.guard(parentObject)) {
+        return null
+      }
+      parentBlock = await Block.fromNetworkObject(parentObject)
+    }
+    catch (e: any) {
+      return null
+    }
+    return parentBlock
+  }
   async validateAncestry(peer: Peer): Promise<Block | null> {
     if (this.previd === null) {
       // genesis

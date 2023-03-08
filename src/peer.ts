@@ -1,29 +1,35 @@
 import { logger } from './logger'
 import { MessageSocket } from './network'
 import semver from 'semver'
-import { Message,
+import { Messages,
+         Message,
          HelloMessage,
+         PeersMessage, GetPeersMessage,
+         IHaveObjectMessage, GetObjectMessage, ObjectMessage,
+         GetChainTipMessage, ChainTipMessage,
+         ErrorMessage,
+         MessageType,
          HelloMessageType,
          PeersMessageType, GetPeersMessageType,
          IHaveObjectMessageType, GetObjectMessageType, ObjectMessageType,
          GetChainTipMessageType, ChainTipMessageType,
          ErrorMessageType,
-         AnnotatedError,
-         GetMempoolMessageType,
-         MempoolMessageType
+         GetMemPoolMessageType,
+         MempoolMessageType,
+         AnnotatedError
         } from './message'
 import { peerManager } from './peermanager'
 import { canonicalize } from 'json-canonicalize'
-import { objectManager } from './object'
+import { db, objectManager } from './object'
 import { network } from './network'
 import { ObjectId } from './object'
 import { chainManager } from './chain'
+import { mempool } from './mempool'
 import { Block } from './block'
 import { Transaction } from './transaction'
-import { mempool } from './mempool'
 
-const VERSION = '0.9.0'
-const NAME = 'Malibu (pset4)'
+const VERSION = '0.10.0'
+const NAME = 'Malibu (pset5)'
 
 // Number of peers that each peer is allowed to report to us
 const MAX_PEERS_PER_PEER = 30
@@ -81,17 +87,23 @@ export class Peer {
       blockid
     })
   }
+  async sendGetMempool() {
+    this.sendMessage({
+      type: 'getmempool'
+    })
+  }
+  async sendMempool(txids: ObjectId[]) {
+    this.sendMessage({
+      type: 'mempool',
+      txids
+    })
+  }
   async sendError(err: AnnotatedError) {
     try {
       this.sendMessage(err.getJSON())
     } catch (error) {
       this.sendMessage(new AnnotatedError('INTERNAL_ERROR', `Failed to serialize error message: ${error}`).getJSON())
     }
-  }
-  async sendGetMempool(){
-    this.sendMessage({
-      type: 'getmempool'
-    })
   }
   sendMessage(obj: object) {
     const message: string = canonicalize(obj)
@@ -162,20 +174,6 @@ export class Peer {
       this.onMessageError.bind(this)
     )(msg)
   }
-  async onMessageGetMempool(msg: GetMempoolMessageType) {
-
-    this.sendMessage({
-      type:'mempool',
-      txids: mempool.mempool
-    })
-
-  }
-  async onMessageMempool(msg: MempoolMessageType) {
-    for(const txid of msg.txids){
-      await objectManager.retrieve(txid,this)
-    }
-  }
-
   async onMessageHello(msg: HelloMessageType) {
     if (!semver.satisfies(msg.version, `^${VERSION}`)) {
       return await this.fatalError(new AnnotatedError('INVALID_FORMAT', `You sent an incorrect version (${msg.version}), which is not compatible with this node's version ${VERSION}.`))
@@ -266,6 +264,19 @@ export class Peer {
       return
     }
     this.sendGetObject(msg.blockid)
+  }
+  async onMessageGetMempool(msg: GetMemPoolMessageType) {
+    const txids = []
+
+    for (const tx of mempool.txs) {
+      txids.push(tx.txid)
+    }
+    this.sendMempool(txids)
+  }
+  async onMessageMempool(msg: MempoolMessageType) {
+    for (const txid of msg.txids) {
+      objectManager.retrieve(txid, this) // intentionally delayed
+    }
   }
   async onMessageError(msg: ErrorMessageType) {
     this.warn(`Peer reported error: ${msg.name}`)
