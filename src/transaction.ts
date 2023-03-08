@@ -11,8 +11,6 @@ import { canonicalize } from 'json-canonicalize'
 import { ver } from './crypto/signature'
 import { logger } from './logger'
 import { Block } from './block'
-import { hash } from './crypto/hash'
-import { mempool } from './mempool'
 
 export class Output {
   pubkey: PublicKey
@@ -131,7 +129,10 @@ export class Transaction {
   async validate(idx?: number, block?: Block) {
     logger.debug(`Validating transaction ${this.txid}`)
     const unsignedTxStr = canonicalize(this.toNetworkObject(false))
-
+    
+    if (this.inputs.length === 0 && this.outputs.length === 0) {
+      throw new AnnotatedError('INVALID_FORMAT', 'Non-coinbase transactions must have at least one input.')
+    }
     if (this.isCoinbase()) {
       if (this.outputs.length > 1) {
         throw new AnnotatedError('INVALID_FORMAT', `Invalid coinbase transaction ${this.txid}. Coinbase must have only a single output.`)
@@ -155,19 +156,11 @@ export class Transaction {
       catch (e) {}
     }
 
-    let inputObjects: string[] = [];
-
     const inputValues = await Promise.all(
       this.inputs.map(async (input, i) => {
         if (blockCoinbase !== undefined && input.outpoint.txid === blockCoinbase.txid) {
           throw new AnnotatedError('INVALID_TX_OUTPOINT', `Transaction ${this.txid} is spending immature coinbase`)
         }
-
-        logger.debug(`Checking if ${this.txid} has used one outpoint more than once`)
-        if(this.txid in inputObjects){
-          throw new AnnotatedError('INVALID_FORMAT', 'Inputs used the same outpoint more than once.')
-        }
-        inputObjects.push(this.txid);
 
         const prevOutput = await input.outpoint.resolve()
         
@@ -198,14 +191,7 @@ export class Transaction {
     }
     this.fees = sumInputs - sumOutputs
     logger.debug(`Transaction ${this.txid} pays fees ${this.fees}`)
-
     logger.debug(`Transaction ${this.txid} is valid`)
-
-    try {
-      await mempool.addTxnToMempool(this)
-    } catch (error) {
-      logger.debug(`${this.txid} cannot be added to the mempool.`)
-    }
   }
   inputsUnsigned() {
     return this.inputs.map(
