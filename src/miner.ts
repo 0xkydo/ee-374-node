@@ -11,7 +11,7 @@ import { chainManager } from './chain'
 import { network } from './network'
 
 class Miner {
-  PK = ""
+  PK = "0513817d1170f4152666f367c5c1d822f38e954eb5c368e1938266d2de9969f4"
   BENCHMARK_FREQ = 10 // 10 seconds
   isBenchmarkingHashRate = true
 
@@ -45,7 +45,7 @@ class Miner {
       created: Math.floor(new Date().getTime() / 1000),
       miner: 'Su and Kyle',
       note: 'Making it all back block by block',
-      studentids: ["jchudnov", "kydo"],
+      studentids: ["jchudnov", "wweng"],
     }
 
     if(isBenchmarkingHashRate) logger.debug(`Starting to compute hashes at timestamp ${Math.floor(new Date().getTime() / 1000)}`)
