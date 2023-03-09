@@ -11,7 +11,7 @@ import { Transaction } from './transaction'
 import { chainManager } from './chain'
 import { Deferred } from './promise'
 
-const TARGET = '00000000abc00000000000000000000000000000000000000000000000000000'
+export const TARGET = '00000000abc00000000000000000000000000000000000000000000000000000'
 const GENESIS: BlockObjectType = {
   T: TARGET,
   created: 1671062400,
@@ -23,7 +23,7 @@ const GENESIS: BlockObjectType = {
   type: 'block'
 }
 const BU = 10**12
-const BLOCK_REWARD = 50 * BU
+export const BLOCK_REWARD = 50 * BU
 
 export class BlockManager {
   deferredValidations: { [key: string]: Deferred<[boolean, string]> } = {}
@@ -351,7 +351,7 @@ export class Block {
       try {
         await this.save()
         await chainManager.onValidBlockArrival(this)
-      } 
+      }
       catch (e: any) {
         throw new AnnotatedError('INTERNAL_ERROR', 'Something went wrong is block saving or state calculations.')
       }

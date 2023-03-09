@@ -5,6 +5,7 @@ import { AnnotatedError } from './message'
 import { db, ObjectId, objectManager } from './object'
 import { Transaction } from './transaction'
 import { UTXOSet } from './utxo'
+import { miner } from './miner'
 
 class MemPool {
   txs: Transaction[] = []
@@ -98,6 +99,9 @@ class MemPool {
         ++successes
       }
     }
+
+    await miner.mine()
+
     logger.info(`Re-applied ${successes} transaction(s) to mempool.`)
     logger.info(`${successes - orphanedTxs.length} transactions were abandoned.`)
     logger.info(`Mempool reorg completed.`)
