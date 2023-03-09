@@ -22,13 +22,13 @@ class Miner {
     try {
       const txids = await db.get('mempool:txids')
       logger.debug(`Retrieved cached mempool: ${txids}.`)
+      if(txids.length > 0){
+        await this.mine();
+      }
     }
     catch {
       // start with an empty mempool of no transactions
-      return;
     }
-
-    await this.mine();
   }
 
   async mine() {
