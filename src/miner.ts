@@ -1,7 +1,7 @@
 import { TARGET, BLOCK_REWARD, BU, Block } from './block'
 import { Transaction } from './transaction'
 import { BlockObject, BlockObjectType,
-         TransactionObject, TransactionOutputObjectType, ObjectType, AnnotatedError, ErrorChoice } from './message'
+         TransactionObject, TransactionObjectType, ObjectType, AnnotatedError, ErrorChoice } from './message'
 import { hash } from './crypto/hash'
 import { canonicalize } from 'json-canonicalize'
 import { objectManager, ObjectId, db } from './object'
@@ -11,15 +11,24 @@ import { chainManager } from './chain'
 import { network } from './network'
 
 class Miner {
-  const PK = "0513817d1170f4152666f367c5c1d822f38e954eb5c368e1938266d2de9969f4"
-  const BENCHMARK_FREQ = 10 // 10 seconds
-  const NAME = 'Su and Kyle'
-  const NOTE = 'Making it all back block by block'
+  PK = "0513817d1170f4152666f367c5c1d822f38e954eb5c368e1938266d2de9969f4"
+  BENCHMARK_FREQ = 10 // 10 seconds
+  NAME = 'Su and Kyle'
+  NOTE = 'Making it all back block by block'
   isBenchmarkingHashRate = true
 
   async init(){
     // Begin mining w/o reorg
-    await mine();
+    try {
+      const txids = await db.get('mempool:txids')
+      logger.debug(`Retrieved cached mempool: ${txids}.`)
+    }
+    catch {
+      // start with an empty mempool of no transactions
+      return;
+    }
+
+    await this.mine();
   }
 
   async mine() {
@@ -27,10 +36,10 @@ class Miner {
     const coinbase: TransactionObjectType = {
       type: 'transaction',
       outputs: [{
-        pubkey: PK,
+        pubkey: this.PK,
         value: BLOCK_REWARD
       }],
-      height: chainManager.longestChainHeight() + 1
+      height: chainManager.longestChainHeight  + 1
     }
 
     // Get transactions from mempool
@@ -41,21 +50,22 @@ class Miner {
     // Create block object
     const block: BlockObjectType = {
       type: 'block',
-      previd: chainManager.longestChainTip().blockid,
-      txids: [objectManager.id(coinbase)].push(txids),
+      previd: chainManager.longestChainTip == null ? null : chainManager.longestChainTip.blockid,
+      txids: [objectManager.id(coinbase).toString()].concat(txids),
       T: TARGET,
       created: Math.floor(new Date().getTime() / 1000),
-      miner: NAME,
-      note: NOTE,
+      miner: this.NAME,
+      note: this.NOTE,
       studentids: ["jchudnov", "wweng"],
+      nonce: ""
     }
 
-    if(isBenchmarkingHashRate) logger.debug(`Starting to compute hashes at timestamp ${Math.floor(new Date().getTime() / 1000)}`)
+    if(this.isBenchmarkingHashRate) logger.debug(`Starting to compute hashes at timestamp ${Math.floor(new Date().getTime() / 1000)}`)
 
     // Performs PoW by calculating hashes
-    this.computeHashes(obj);
+    this.computeHashes(block);
 
-    if(isBenchmarkingHashRate) logger.debug(`Ended computing hashes at timestamp ${Math.floor(new Date().getTime() / 1000)}`)
+    if(this.isBenchmarkingHashRate) logger.debug(`Ended computing hashes at timestamp ${Math.floor(new Date().getTime() / 1000)}`)
 
     logger.debug(`Block being mined with nonce ${block.nonce} and coinbase tx id ${objectManager.id(coinbase)}`)
 
@@ -79,7 +89,14 @@ class Miner {
     await objectManager.put(block)
 
     // save block
-    await b.save()
+    await (new Block(block.previd,
+      block.txids,
+      block.nonce,
+      block.T,
+      block.created,
+      block.miner,
+      block.note,
+      block.studentids)).save()
   }
 
   // Computes the hashes
@@ -96,20 +113,20 @@ class Miner {
       }
 
       // Check hashrate
-      if(isBenchmarkingHashRate && (Math.floor(new Date().getTime() / 1000) - currTimestamp == BENCHMARK_FREQ)){
-        logger.debug(`Hashrate: ${(nonce - prevNonce) / BENCHMARK_FREQ} h/s`)
+      if(this.isBenchmarkingHashRate && (Math.floor(new Date().getTime() / 1000) - currTimestamp == this.BENCHMARK_FREQ)){
+        logger.debug(`Hashrate: ${(nonce - prevNonce) / this.BENCHMARK_FREQ} h/s`)
         prevNonce = nonce
-        currTimestamp = (Math.floor(new Date().getTime() / 1000)
+        currTimestamp = Math.floor(new Date().getTime() / 1000)
       }
       nonce += 1
     }
   }
 
-  hasPoW(id): boolean {
+  hasPoW(id: any): boolean {
     return BigInt(`0x${id}`) <= BigInt(`0x${TARGET}`)
   }
 
-  async sendBUPayment(txID, sig){
+  async sendBUPayment(txID: string, sig: string){
     // Create payment
     const payment: TransactionObjectType = {
       type: 'transaction',
@@ -124,7 +141,7 @@ class Miner {
         pubkey: "0x3f0bc71a375b574e4bda3ddf502fe1afd99aa020bf6049adfe525d9ad18ff33f",
         value: 50 * BU
       }],
-      height: chainManager.longestChainHeight() + 1
+      height: chainManager.longestChainHeight + 1
     }
 
     // Gossip payment
