@@ -1,4 +1,4 @@
-import { TARGET, BLOCK_REWARD, Block } from './block'
+import { TARGET, BLOCK_REWARD, BU, Block } from './block'
 import { Transaction } from './transaction'
 import { BlockObject, BlockObjectType,
          TransactionObject, TransactionOutputObjectType, ObjectType, AnnotatedError, ErrorChoice } from './message'
@@ -55,6 +55,8 @@ class Miner {
 
     if(isBenchmarkingHashRate) logger.debug(`Ended computing hashes at timestamp ${Math.floor(new Date().getTime() / 1000)}`)
 
+    logger.debug(`Block being mined with nonce ${block.nonce} and coinbase tx id ${objectManager.id(coinbase)}`)
+
     // validate block (for debugging)
     // await b.validate()
 
@@ -103,6 +105,34 @@ class Miner {
 
   hasPoW(id): boolean {
     return BigInt(`0x${id}`) <= BigInt(`0x${TARGET}`)
+  }
+
+  async sendBUPayment(txID, sig){
+    // Create payment
+    const payment: TransactionObjectType = {
+      type: 'transaction',
+      inputs: [{
+        outpoint: {
+          "txid": txID,
+          "index": 0
+        },
+        "sig": sig
+      }],
+      outputs: [{
+        pubkey: "0x3f0bc71a375b574e4bda3ddf502fe1afd99aa020bf6049adfe525d9ad18ff33f",
+        value: 50 * BU
+      }],
+      height: chainManager.longestChainHeight() + 1
+    }
+
+    // Gossip payment
+    network.broadcast({
+      type: 'object',
+      payment
+    })
+
+    // Save payment in db
+    await objectManager.put(payment)
   }
 }
 

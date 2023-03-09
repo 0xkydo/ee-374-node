@@ -15,6 +15,11 @@ async function main() {
   await chainManager.init()
   await mempool.init()
   await miner.init()
+  /* send bu
+   let txID = ... tx id is coinbase tx of block we mined (or can do multiple if not enough)
+   let signature ... signature of tx
+   await miner.sendBUPayment(txID, signature)
+  */
   network.init(BIND_PORT, BIND_IP)
 }
 

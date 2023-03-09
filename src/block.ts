@@ -22,7 +22,7 @@ const GENESIS: BlockObjectType = {
   txids: [],
   type: 'block'
 }
-const BU = 10**12
+export const BU = 10**12
 export const BLOCK_REWARD = 50 * BU
 
 export class BlockManager {
