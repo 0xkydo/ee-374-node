@@ -45,7 +45,7 @@ class Miner {
     // Get transactions from mempool
     const txids = await db.get('mempool:txids')
 
-    logger.debug(`Miner retrieved cached mempool: ${txids}.`)
+    logger.info(`Miner retrieved cached mempool: ${txids}.`)
 
     // Create block object
     const block: BlockObjectType = {
@@ -60,14 +60,14 @@ class Miner {
       nonce: ""
     }
 
-    if(this.isBenchmarkingHashRate) logger.debug(`Starting to compute hashes at timestamp ${Math.floor(new Date().getTime() / 1000)}`)
+    if(this.isBenchmarkingHashRate) logger.info(`Starting to compute hashes at timestamp ${Math.floor(new Date().getTime() / 1000)}`)
 
     // Performs PoW by calculating hashes
     this.computeHashes(block);
 
-    if(this.isBenchmarkingHashRate) logger.debug(`Ended computing hashes at timestamp ${Math.floor(new Date().getTime() / 1000)}`)
+    if(this.isBenchmarkingHashRate) logger.info(`Ended computing hashes at timestamp ${Math.floor(new Date().getTime() / 1000)}`)
 
-    logger.debug(`Block being mined with nonce ${block.nonce} and coinbase tx id ${objectManager.id(coinbase)}`)
+    logger.info(`Block being mined with nonce ${block.nonce} and coinbase tx id ${objectManager.id(coinbase)}`)
 
     // validate block (for debugging)
     // await b.validate()
