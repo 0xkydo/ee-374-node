@@ -11,8 +11,10 @@ import { chainManager } from './chain'
 import { network } from './network'
 
 class Miner {
-  PK = "0513817d1170f4152666f367c5c1d822f38e954eb5c368e1938266d2de9969f4"
-  BENCHMARK_FREQ = 10 // 10 seconds
+  const PK = "0513817d1170f4152666f367c5c1d822f38e954eb5c368e1938266d2de9969f4"
+  const BENCHMARK_FREQ = 10 // 10 seconds
+  const NAME = 'Su and Kyle'
+  const NOTE = 'Making it all back block by block'
   isBenchmarkingHashRate = true
 
   async init(){
@@ -43,8 +45,8 @@ class Miner {
       txids: [objectManager.id(coinbase)].push(txids),
       T: TARGET,
       created: Math.floor(new Date().getTime() / 1000),
-      miner: 'Su and Kyle',
-      note: 'Making it all back block by block',
+      miner: NAME,
+      note: NOTE,
       studentids: ["jchudnov", "wweng"],
     }
 
