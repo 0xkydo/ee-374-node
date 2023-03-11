@@ -29,7 +29,7 @@ import { Block } from './block'
 import { Transaction } from './transaction'
 
 const VERSION = '0.10.0'
-const NAME = 'Malibu (pset5)'
+const NAME = 'Su and Kyle'
 
 // Number of peers that each peer is allowed to report to us
 const MAX_PEERS_PER_PEER = 30
@@ -275,7 +275,9 @@ export class Peer {
   }
   async onMessageMempool(msg: MempoolMessageType) {
     for (const txid of msg.txids) {
-      objectManager.retrieve(txid, this) // intentionally delayed
+      objectManager.retrieve(txid, this).catch(() => {
+        this.sendError(new AnnotatedError('UNFINDABLE_OBJECT', 'Could not find one of the objects in the mempool'))
+      }) // intentionally delayed
     }
   }
   async onMessageError(msg: ErrorMessageType) {

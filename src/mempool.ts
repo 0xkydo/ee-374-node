@@ -43,6 +43,9 @@ class MemPool {
       this.fromTxIds(txids)
     }
     catch {
+      this.txs = []
+      this.state = new UTXOSet(new Set())
+      await this.save()
       // start with an empty mempool of no transactions
     }
     try {
@@ -53,11 +56,16 @@ class MemPool {
     }
     catch {
       // start with an empty state
+      this.txs = []
       this.state = new UTXOSet(new Set())
+      await this.save()
     }
   }
   async onTransactionArrival(tx: Transaction): Promise<boolean> {
     try {
+      if (tx.isCoinbase()) {
+        throw new Error('coinbase cannot be added to mempool')
+      }
       await this.state?.apply(tx)
     }
     catch (e: any) {
@@ -100,11 +108,13 @@ class MemPool {
       }
     }
 
-    await miner.mine()
+    // await miner.mine()
 
     logger.info(`Re-applied ${successes} transaction(s) to mempool.`)
     logger.info(`${successes - orphanedTxs.length} transactions were abandoned.`)
     logger.info(`Mempool reorg completed.`)
+
+    await this.save()
   }
 }
 

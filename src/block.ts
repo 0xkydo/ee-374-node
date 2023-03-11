@@ -123,8 +123,11 @@ export class Block {
       txids: this.txids,
       nonce: this.nonce,
       T: this.T,
-      created: this.created,
-      miner: this.miner,
+      created: this.created
+    }
+    
+    if(this.miner !== undefined){
+      netObj.miner = this.miner
     }
 
     if (this.note !== undefined) {
