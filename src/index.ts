@@ -20,7 +20,8 @@ async function main() {
    let signature ... signature of tx
    await miner.sendBUPayment(txID, signature)
   */
-  network.init(BIND_PORT, BIND_IP)
+  await network.init(BIND_PORT, BIND_IP)
+  miner.mine()
 }
 
 main()

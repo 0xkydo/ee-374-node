@@ -30,7 +30,7 @@ class Miner {
   NAME = 'Su and Kyle'
   NOTE = 'Making it all back block by block'
   isMining = false;
-  child : child_process.ChildProcessWithoutNullStreams | undefined
+  child: child_process.ChildProcessWithoutNullStreams | undefined
 
   async createTxn() {
 
@@ -89,6 +89,8 @@ class Miner {
     const tipHeight = chainManager.longestChainHeight;
     const coinbase = await db.get(`t3ac_${tipHeight + 1}`)
 
+    await objectManager.put(coinbase)
+
     logger.debug(`Miner retrieved new coinbase txn at ${tipHeight}`)
 
     if (chainManager.longestChainTip == null) {
@@ -114,20 +116,17 @@ class Miner {
 
     logger.info(`Block being mined with nonce ${block.nonce} and coinbase tx id ${objectManager.id(coinbase)}`)
 
+    await objectManager.put(block)
+
     // validate block (for debugging)
     // await b.validate()
-
-    // Gossip coinbase transaction
-    network.broadcast({
-      type: 'object',
-      object: coinbase
-    })
 
     // Gossip new block
     network.broadcast({
       type: 'object',
       object: block
     })
+
 
     // Save coinbase tx and block in db
     await objectManager.put(coinbase)
@@ -145,9 +144,9 @@ class Miner {
   }
 
   // Computes the hashes
-  async computeHashes(obj: BlockObjectType){
+  async computeHashes(obj: BlockObjectType) {
 
-    if(this.isMining == true && this.child !== undefined){
+    if (this.isMining == true && this.child !== undefined) {
       this.child?.kill('SIGKILL')
       this.child = undefined;
       logger.debug(`Old child process eliminated`)
@@ -189,7 +188,6 @@ class Miner {
 
     this.child = undefined
     this.isMining = false
-
 
   }
 
