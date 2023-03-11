@@ -130,17 +130,7 @@ class Miner {
 
     // Save coinbase tx and block in db
     await objectManager.put(coinbase)
-    await objectManager.put(block)
 
-    // save block
-    await (new Block(block.previd,
-      block.txids,
-      block.nonce,
-      block.T,
-      block.created,
-      block.miner,
-      block.note,
-      block.studentids)).save()
   }
 
   // Computes the hashes
