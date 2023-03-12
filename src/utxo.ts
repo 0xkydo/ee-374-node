@@ -59,7 +59,6 @@ export class UTXOSet {
     for (const tx of txs) {
       logger.debug(`Applying transaction ${tx.txid} to state`)
       await this.apply(tx, idx, block)
-      logger.debug(`State after transaction application is: ${this}`)
       ++idx
     }
   }

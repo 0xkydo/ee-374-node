@@ -216,7 +216,7 @@ export class Block {
     }
 
     this.stateAfter = stateAfter
-    logger.debug(`UTXO state of block ${this.blockid} cached: ${JSON.stringify(Array.from(stateAfter.outpoints))}`)
+    logger.debug(`UTXO state of block ${this.blockid} cached`)
   }
   async loadParent(): Promise<Block | null> {
     let parentBlock: Block
