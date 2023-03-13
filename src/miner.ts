@@ -28,7 +28,7 @@ const filePathAbs = path.resolve(filePath);
 class Miner {
   PK = "f7c6335811ac0f4b207081025e3d21144c13d3b3e9c4a322ecc7cfabb231a4a0"
   NAME = 'Su and Kyle'
-  NOTE = 'Making it all back block by block'
+  NOTE = 'Thank you for the drama, best miner.'
   isMining = false;
   child: child_process.ChildProcessWithoutNullStreams | undefined
 
